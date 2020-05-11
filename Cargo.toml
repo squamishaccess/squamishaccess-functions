@@ -1,5 +1,5 @@
 [package]
-name = "sas-mailchimp-paypal-fn-rs"
+name = "squamishaccess-signup-function-rs"
 version = "0.1.0"
 authors = ["Jeremiah Senkpiel <fishrock123@rocketmail.com>"]
 edition = "2018"
