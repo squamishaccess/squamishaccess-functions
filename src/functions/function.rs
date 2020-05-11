@@ -6,7 +6,7 @@ use azure_functions::{
 use chrono::Duration;
 use chrono::prelude::*;
 use fehler::*;
-use log::{info, warn};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::env;
 use thiserror::Error;
@@ -68,7 +68,7 @@ pub async fn function(req: HttpRequest) -> HttpResponse {
     match errorable_function(req).await {
         Ok(response) => response,
         Err(error) => {
-            info!("Internal error: {}", error);
+            error!("Internal error: {}", error);
 
             HttpResponse::build()
                 .status(Status::InternalServerError)
@@ -87,7 +87,7 @@ async fn errorable_function(req: HttpRequest) -> HttpResponse {
     let sandbox = env::var("PAYPAL_SANDBOX").is_ok();
 
     if req.method() != "POST" {
-        info!("Request method was not allowed. Was: {}", req.method());
+        warn!("Request method was not allowed. Was: {}", req.method());
         return HttpResponse::build()
             .status(Status::MethodNotAllowed)
             .body(Status::MethodNotAllowed.to_string())
@@ -96,7 +96,7 @@ async fn errorable_function(req: HttpRequest) -> HttpResponse {
     info!("PayPal IPN Notification Event received successfully.");
 
     if sandbox {
-        info!("SANDBOX: Using PayPal sandbox environment");
+        warn!("SANDBOX: Using PayPal sandbox environment");
     }
     let paypal_verify_uri = if sandbox { SANDBOX_VERIFY_URI } else { PRODUCTION_VERIFY_URI };
 
