@@ -2,12 +2,13 @@ use std::env;
 
 use chrono::prelude::*;
 use chrono::Duration;
+use chrono::SecondsFormat::Secs;
 use color_eyre::eyre::Result;
 use http_types::auth::BasicAuth;
 use serde::{Deserialize, Serialize};
 use tide::http::Method;
-use tide::{Request, Response, StatusCode};
-use tracing::{info, warn};
+use tide::{Body, Request, Response, StatusCode};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 struct IPNTransationMessage {
@@ -18,7 +19,7 @@ struct IPNTransationMessage {
     last_name: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
 struct MergeFields {
     FNAME: String,
@@ -27,7 +28,7 @@ struct MergeFields {
     EXPIRES: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct MailchimpRequest {
     email_address: String,
     merge_fields: MergeFields,
@@ -132,8 +133,8 @@ async fn handler(mut req: Request<()>) -> tide::Result<Response> {
         merge_fields: MergeFields {
             FNAME: ipn_transaction_message.first_name,
             LNAME: ipn_transaction_message.last_name,
-            JOINED: utc_now.to_rfc3339(),
-            EXPIRES: utc_expires.to_rfc3339(),
+            JOINED: utc_now.to_rfc3339_opts(Secs, true),
+            EXPIRES: utc_expires.to_rfc3339_opts(Secs, true),
         },
         status: "pending".to_string(),
     };
@@ -142,9 +143,11 @@ async fn handler(mut req: Request<()>) -> tide::Result<Response> {
 
     let authz = BasicAuth::new("any", api_key);
 
+    debug!("{:?}", json_struct);
+
     let mut mailchimp_res: surf::Response = surf::post(url.as_str())
         .header(authz.name(), authz.value())
-        .body(surf::Body::from_json(&json_struct)?)
+        .body(Body::from_json(&json_struct)?)
         .await?;
 
     if mailchimp_res.status().is_client_error() || mailchimp_res.status().is_server_error() {
@@ -199,12 +202,15 @@ async fn main() -> Result<()> {
         Ok(val) => val.parse().expect("Custom Handler port is not a number!"),
         Err(_) => 3000,
     };
-    let addr = "127.0.0.1";
+    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
     let mut server = tide::new();
 
-    server.at("/api/SimpleHttpTrigger").get(handler);
+    server.at("/api/SimpleHttpTrigger").post(handler);
 
-    println!("Listening on http://{}:{}", addr, port);
-    server.listen((addr, port)).await.map_err(Into::into)
+    println!("Listening on http://{}:{}", host, port);
+    server
+        .listen((host.as_str(), port))
+        .await
+        .map_err(Into::into)
 }
