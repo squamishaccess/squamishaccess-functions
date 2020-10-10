@@ -187,6 +187,13 @@ async fn handler(mut req: Request<()>) -> tide::Result<Response> {
 
 #[async_std::main]
 async fn main() -> Result<()> {
+    color_eyre::install()?;
+    dotenv::dotenv().ok();
+
+    let level = femme::LevelFilter::Info;
+    femme::with_level(level);
+    info!("Logger started - level: {}", level);
+
     let port_key = "FUNCTIONS_CUSTOMHANDLER_PORT";
     let port: u16 = match env::var(port_key) {
         Ok(val) => val.parse().expect("Custom Handler port is not a number!"),
