@@ -7,15 +7,32 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-azure-functions = "0.11.0"
-chrono = { version = "0.4", features = ["serde"] }
-fehler = "1.0"
+color-eyre = "0.5.6"
 futures = "0.3.5"
-log = "0.4.8"
-reqwest = { version = "0.10.0-alpha.2", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_derive = "1.0"
 serde_json = "1.0"
 serde_qs = "0.5.2"
-thiserror = "1.0"
+surf = "2.0"
+tracing = "0.1"
+
+[dependencies.async-std]
+version = "1.6.5"
+features = ["attributes"]
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.http-types]
+git = "https://github.com/http-rs/http-types.git"
+branch = "basic-auth"
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.tide]
+version = "0.13"
+features = ["h1-server", "logger"]
+
+[patch.crates-io]
+http-types = { git = "https://github.com/http-rs/http-types.git", branch = "basic-auth" }

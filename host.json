@@ -1,6 +1,15 @@
-  
 {
     "version": "2.0",
+    "extensionBundle": {
+        "id": "Microsoft.Azure.Functions.ExtensionBundle",
+        "version": "[1.*, 2.0.0)"
+    },
+    "customHandler": {
+        "description": {
+            "defaultExecutablePath": "target/release/squamishaccess-signup-function-rs.exe"
+        },
+        "enableForwardingHttpRequest": true
+    },
     "logging": {
         "logLevel": {
             "default": "Information"
