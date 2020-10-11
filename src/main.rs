@@ -29,6 +29,7 @@ struct State {
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 struct IPNTransationMessage {
     txn_id: String,
+    txn_type: String,
     payment_status: String,
     payer_email: String,
     first_name: String,
@@ -120,11 +121,25 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     }
 
     if ipn_transaction_message.payment_status != "Completed" {
-        error!(
+        info!(
             "IPN: Payment status was not \"Completed\": {}",
             ipn_transaction_message.payment_status
         );
-        return Ok(StatusCode::InternalServerError.into());
+        return Ok(StatusCode::Ok.into());
+    }
+
+    match ipn_transaction_message.txn_type.as_str() {
+        "web_accept" => (),        // Ok
+        "subscr_payment" => (),    // TODO: check amount
+        "send_money" => (),        // TODO: check amount
+        "recurring_payment" => (), // TODO: check amount
+        _ => {
+            error!(
+                "IPN: Payment status was not \"Completed\": {}",
+                ipn_transaction_message.payment_status
+            );
+            return Ok(StatusCode::InternalServerError.into());
+        }
     }
 
     info!("Email: {}", ipn_transaction_message.payer_email);
@@ -171,9 +186,11 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
                 .detail
                 .contains(ipn_transaction_message.payer_email.as_str())
         {
-            Ok(Response::builder(StatusCode::Ok)
-                .body(StatusCode::Ok.to_string())
-                .into())
+            // Assume the user exists in mailchimp or was permenantly removed.
+            // This is to deal with PayPal IPN retry nonsense.
+            // You are not supposted to retry with the same information for
+            // error code 400 but PayPal doesn't care and retries continuously.
+            Ok(StatusCode::Ok.into())
         } else {
             Ok(Response::builder(mailchimp_res.status())
                 .body(error_body)
@@ -181,13 +198,19 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         }
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
-        info!(
-            "Mailchimp: successfully set subscription status \"{}\" for: {}",
-            mc_json.status, mc_json.email_address
-        );
-        Ok(Response::builder(StatusCode::Ok)
-            .body(StatusCode::Ok.to_string())
-            .into())
+        if mc_json.status == "pending" || mc_json.status == "subscribed" {
+            info!(
+                "Mailchimp: successfully set subscription status \"{}\" for: {}",
+                mc_json.status, mc_json.email_address
+            );
+            Ok(StatusCode::Ok.into())
+        } else {
+            warn!(
+                "Mailchimp: unsuccessful result: {}",
+                serde_json::to_string(&mc_json)?
+            );
+            Ok(StatusCode::InternalServerError.into())
+        }
     }
 }
 
