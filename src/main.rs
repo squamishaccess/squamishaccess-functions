@@ -49,6 +49,7 @@ struct MergeFields {
 struct MailchimpRequest<'email> {
     email_address: &'email str,
     merge_fields: MergeFields,
+    status_if_new: &'static str,
     status: &'static str,
 }
 
@@ -60,7 +61,7 @@ struct MailchimpResponse {
 
 #[derive(Default, Deserialize, Serialize)]
 struct MailchimpErrorResponse {
-    detail: String,
+    title: String,
 }
 
 async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
@@ -155,16 +156,19 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
             JOINED: utc_now.to_rfc3339_opts(Secs, true),
             EXPIRES: utc_expires.to_rfc3339_opts(Secs, true),
         },
-        status: "pending",
+        status_if_new: "pending",
+        status: "subscribed",
     };
 
     debug!("{:?}", mc_req);
 
-    let mc_path = format!("3.0/lists/{}/members", state.mc_list_id);
+    let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
+
+    let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let authz = BasicAuth::new("any", &state.mc_api_key);
     let mut mailchimp_res = state
         .mailchimp
-        .post(&mc_path)
+        .put(&mc_path)
         .header(authz.name(), authz.value())
         .body(Body::from_json(&mc_req)?)
         .await?;
@@ -172,30 +176,15 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     if mailchimp_res.status().is_client_error() || mailchimp_res.status().is_server_error() {
         let error_body = mailchimp_res.body_string().await?;
 
-        let maybe_json = serde_json::from_str::<MailchimpErrorResponse>(error_body.as_str());
-
-        warn!(
+        error!(
             "Mailchimp error: {} -- {}",
             mailchimp_res.status(),
             error_body
         );
 
-        if maybe_json.is_ok()
-            && maybe_json
-                .unwrap()
-                .detail
-                .contains(ipn_transaction_message.payer_email.as_str())
-        {
-            // Assume the user exists in mailchimp or was permenantly removed.
-            // This is to deal with PayPal IPN retry nonsense.
-            // You are not supposted to retry with the same information for
-            // error code 400 but PayPal doesn't care and retries continuously.
-            Ok(StatusCode::Ok.into())
-        } else {
-            Ok(Response::builder(mailchimp_res.status())
-                .body(error_body)
-                .into())
-        }
+        Ok(Response::builder(mailchimp_res.status())
+            .body(error_body)
+            .into())
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
         if mc_json.status == "pending" || mc_json.status == "subscribed" {
