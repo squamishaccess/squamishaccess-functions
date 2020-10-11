@@ -19,3 +19,5 @@ Cargo.lock
 
 # Local env variables
 .env
+
+/bin
