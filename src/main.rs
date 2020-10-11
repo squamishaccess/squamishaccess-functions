@@ -45,8 +45,8 @@ struct MergeFields {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct MailchimpRequest {
-    email_address: String,
+struct MailchimpRequest<'email> {
+    email_address: &'email str,
     merge_fields: MergeFields,
     status: &'static str,
 }
@@ -77,7 +77,9 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     // Must be done after we take the main request body.
     let state = req.state();
 
-    let verify_response = state.paypal.post(state.paypal_verify)
+    let verify_response = state
+        .paypal
+        .post(state.paypal_verify)
         .body(verification_body)
         .recv_string()
         .await?;
@@ -95,7 +97,7 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
                 error.to_string(),
-            ))
+            ));
         }
     }
 
@@ -131,7 +133,7 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365 * 5 + 1);
 
     let mc_req = MailchimpRequest {
-        email_address: ipn_transaction_message.payer_email.clone(),
+        email_address: &ipn_transaction_message.payer_email,
         merge_fields: MergeFields {
             FNAME: ipn_transaction_message.first_name,
             LNAME: ipn_transaction_message.last_name,
@@ -145,7 +147,9 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
 
     let mc_path = format!("3.0/lists/{}/members", state.mc_list_id);
     let authz = BasicAuth::new("any", &state.mc_api_key);
-    let mut mailchimp_res = state.mailchimp.post(&mc_path)
+    let mut mailchimp_res = state
+        .mailchimp
+        .post(&mc_path)
         .header(authz.name(), authz.value())
         .body(Body::from_json(&mc_req)?)
         .await?;
@@ -154,8 +158,6 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         let error_body = mailchimp_res.body_string().await?;
 
         let maybe_json = serde_json::from_str::<MailchimpErrorResponse>(error_body.as_str());
-        let was_json = maybe_json.is_ok();
-        let json = maybe_json.unwrap_or_default();
 
         warn!(
             "Mailchimp error: {} -- {}",
@@ -163,8 +165,9 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
             error_body
         );
 
-        if was_json
-            && json
+        if maybe_json.is_ok()
+            && maybe_json
+                .unwrap()
                 .detail
                 .contains(ipn_transaction_message.payer_email.as_str())
         {
@@ -203,7 +206,10 @@ async fn main() -> Result<()> {
     let mc_list_id = env::var("MAILCHIMP_LIST_ID").expect("MAILCHIMP_LIST_ID is required.");
     let mc_base_url = Url::parse(&format!(
         "https://{}.api.mailchimp.com",
-        mc_api_key.split('-').nth(1).expect("Requires a valid, full mailchimp api key")
+        mc_api_key
+            .split('-')
+            .nth(1)
+            .expect("Requires a valid, full mailchimp api key")
     ))?;
 
     let paypal_base_url;
@@ -235,7 +241,10 @@ async fn main() -> Result<()> {
     server.at("/api/SimpleHttpTrigger").post(handler);
 
     let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT")
-        .map(|v| v.parse().expect("FUNCTIONS_CUSTOMHANDLER_PORT must be a number."))
+        .map(|v| {
+            v.parse()
+                .expect("FUNCTIONS_CUSTOMHANDLER_PORT must be a number.")
+        })
         .unwrap_or(80);
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
