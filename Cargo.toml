@@ -26,7 +26,7 @@ version = "0.4"
 features = ["serde"]
 
 [dependencies.http-types]
-git = "https://github.com/http-rs/http-types.git"
+git = "https://github.com/Fishrock123/http-types.git"
 branch = "basic-auth"
 
 [dependencies.serde]
@@ -43,4 +43,4 @@ version = "0.13"
 features = ["h1-server"]
 
 [patch.crates-io]
-http-types = { git = "https://github.com/http-rs/http-types.git", branch = "basic-auth" }
+http-types = { git = "https://github.com/Fishrock123/http-types.git", branch = "basic-auth" }
