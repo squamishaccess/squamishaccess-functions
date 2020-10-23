@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use surf::{Client, Url};
 use tide::http::Method;
 use tide::{Body, Request, Response, StatusCode};
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 mod logger;
 use logger::LogMiddleware;
@@ -64,13 +64,27 @@ struct MailchimpErrorResponse {
 }
 
 async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
+    let mut invocation_id = "(id missing)".to_string();
+    if let Some(vals) = req.header("X-Azure-Functions-InvocationId") {
+        invocation_id = vals.last().as_str().to_string();
+    }
+    // Put this in every log message so that these message show up in Azure function invocations.
+    let id = invocation_id;
+
     if req.method() != Method::Post {
-        warn!("Request method was not allowed. Was: {}", req.method());
+        warn!(
+            "{} Request method was not allowed. Was: {}",
+            id,
+            req.method()
+        );
         return Ok(Response::builder(StatusCode::MethodNotAllowed)
             .body(StatusCode::MethodNotAllowed.to_string())
             .into());
     }
-    info!("PayPal IPN Notification Event received successfully.");
+    info!(
+        "{} PayPal IPN Notification Event received successfully.",
+        id
+    );
 
     let ipn_transaction_message_raw = req.body_string().await?;
     let verification_body = ["cmd=_notify-validate&", &ipn_transaction_message_raw].concat();
@@ -92,8 +106,8 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         }
         Err(error) => {
             error!(
-                "Invalid IPN: unparseable IPN: {}",
-                ipn_transaction_message_raw
+                "{} Invalid IPN: unparseable IPN: {}",
+                id, ipn_transaction_message_raw
             );
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
@@ -104,26 +118,29 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
 
     match verify_response.as_str() {
         "VERIFIED" => info!(
-            "Verified IPN: IPN message for Transaction ID \"{}\" is verified",
-            ipn_transaction_message.txn_id
+            "{} Verified IPN: IPN message for Transaction ID \"{}\" is verified",
+            id, ipn_transaction_message.txn_id
         ),
         "INVALID" => {
             error!(
-                "Invalid IPN: IPN message for Transaction ID \"{}\" is invalid",
-                ipn_transaction_message.txn_id
+                "{} Invalid IPN: IPN message for Transaction ID \"{}\" is invalid",
+                id, ipn_transaction_message.txn_id
             );
             return Ok(StatusCode::InternalServerError.into());
         }
         s => {
-            error!("Invalid IPN: Unexpected IPN verify response body: {}", s);
+            error!(
+                "{} Invalid IPN: Unexpected IPN verify response body: {}",
+                id, s
+            );
             return Ok(StatusCode::InternalServerError.into());
         }
     }
 
     if ipn_transaction_message.payment_status != "Completed" {
         info!(
-            "IPN: Payment status was not \"Completed\": {}",
-            ipn_transaction_message.payment_status
+            "{} IPN: Payment status was not \"Completed\": {}",
+            id, ipn_transaction_message.payment_status
         );
         return Ok(StatusCode::Ok.into());
     }
@@ -135,14 +152,14 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         "recurring_payment" => (), // TODO: check amount
         _ => {
             error!(
-                "IPN: Payment status was not \"Completed\": {}",
-                ipn_transaction_message.payment_status
+                "{} IPN: Payment status was not \"Completed\": {}",
+                id, ipn_transaction_message.payment_status
             );
             return Ok(StatusCode::InternalServerError.into());
         }
     }
 
-    info!("Email: {}", ipn_transaction_message.payer_email);
+    info!("{} Email: {}", id, ipn_transaction_message.payer_email);
 
     let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
     let authz = BasicAuth::new("any", &state.mc_api_key);
@@ -153,19 +170,20 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         .get(&mc_path)
         .header(authz.name(), authz.value())
         .await?;
-    
+
     if mailchimp_res.status().is_server_error() {
         let error_body = mailchimp_res.body_string().await?;
 
         error!(
-            "Mailchimp error: {} -- {}",
+            "{} Mailchimp error: {} -- {}",
+            id,
             mailchimp_res.status(),
             error_body
         );
 
         return Ok(Response::builder(mailchimp_res.status())
             .body(error_body)
-            .into())
+            .into());
     }
 
     let status;
@@ -194,8 +212,6 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         status,
     };
 
-    debug!("{:?}", mc_req);
-
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp
@@ -208,7 +224,8 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         let error_body = mailchimp_res.body_string().await?;
 
         error!(
-            "Mailchimp error: {} -- {}",
+            "{} Mailchimp error: {} -- {}",
+            id,
             mailchimp_res.status(),
             error_body
         );
@@ -220,13 +237,14 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
         if mc_json.status == "pending" || mc_json.status == "subscribed" {
             info!(
-                "Mailchimp: successfully set subscription status \"{}\" for: {}",
-                mc_json.status, mc_json.email_address
+                "{} Mailchimp: successfully set subscription status \"{}\" for: {}",
+                id, mc_json.status, mc_json.email_address
             );
             Ok(StatusCode::Ok.into())
         } else {
             warn!(
-                "Mailchimp: unsuccessful result: {}",
+                "{} Mailchimp: unsuccessful result: {}",
+                id,
                 serde_json::to_string(&mc_json)?
             );
             Ok(StatusCode::InternalServerError.into())
@@ -281,14 +299,13 @@ async fn main() -> Result<()> {
 
     let mut server = tide::with_state(Arc::new(state));
     server.with(LogMiddleware::new());
-    server.at("/api/SimpleHttpTrigger").post(handler);
+    server.at("/api/Paypal-IPN").post(handler);
 
     let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT")
-        .map(|v| {
+        .map_or(80, |v| {
             v.parse()
                 .expect("FUNCTIONS_CUSTOMHANDLER_PORT must be a number.")
-        })
-        .unwrap_or(80);
+        });
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
     server
