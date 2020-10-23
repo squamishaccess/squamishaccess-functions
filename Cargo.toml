@@ -39,7 +39,7 @@ default-features = false
 features = ["h1-client", "middleware-logger", "encoding"]
 
 [dependencies.tide]
-version = "0.13"
+version = "0.14"
 features = ["h1-server"]
 
 [patch.crates-io]
