@@ -49,7 +49,6 @@ struct MergeFields {
 struct MailchimpRequest<'email> {
     email_address: &'email str,
     merge_fields: MergeFields,
-    status_if_new: &'static str,
     status: &'static str,
 }
 
@@ -145,6 +144,42 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
 
     info!("Email: {}", ipn_transaction_message.payer_email);
 
+    let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
+    let authz = BasicAuth::new("any", &state.mc_api_key);
+
+    let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
+    let mut mailchimp_res = state
+        .mailchimp
+        .get(&mc_path)
+        .header(authz.name(), authz.value())
+        .await?;
+    
+    if mailchimp_res.status().is_server_error() {
+        let error_body = mailchimp_res.body_string().await?;
+
+        error!(
+            "Mailchimp error: {} -- {}",
+            mailchimp_res.status(),
+            error_body
+        );
+
+        return Ok(Response::builder(mailchimp_res.status())
+            .body(error_body)
+            .into())
+    }
+
+    let status;
+    if mailchimp_res.status().is_client_error() {
+        status = "pending"
+    } else {
+        let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
+        status = match mc_json.status.as_str() {
+            "subscribed" => "subscribed",
+            "unsubscribed" => "unsubscribed",
+            _ => "pending",
+        }
+    };
+
     let utc_now: DateTime<Utc> = Utc::now();
     let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365 * 5 + 1);
 
@@ -156,16 +191,12 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
             JOINED: utc_now.to_rfc3339_opts(Secs, true),
             EXPIRES: utc_expires.to_rfc3339_opts(Secs, true),
         },
-        status_if_new: "pending",
-        status: "subscribed",
+        status,
     };
 
     debug!("{:?}", mc_req);
 
-    let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
-
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
-    let authz = BasicAuth::new("any", &state.mc_api_key);
     let mut mailchimp_res = state
         .mailchimp
         .put(&mc_path)
