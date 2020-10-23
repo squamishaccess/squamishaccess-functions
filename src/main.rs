@@ -6,11 +6,11 @@ use chrono::Duration;
 use chrono::SecondsFormat::Secs;
 use color_eyre::eyre::Result;
 use http_types::auth::BasicAuth;
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use surf::{Client, Url};
 use tide::http::Method;
 use tide::{Body, Request, Response, StatusCode};
-use tracing::{error, info, warn};
 
 mod logger;
 use logger::LogMiddleware;

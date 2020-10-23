@@ -38,12 +38,6 @@ impl LogMiddleware {
         }
         req.set_ext(LogMiddlewareHasBeenRun);
 
-        let path = req.url().path().to_owned();
-        let method = req.method().to_string();
-        log::info!("<-- Request received", {
-            method: method,
-            path: path,
-        });
         let start = std::time::Instant::now();
         let response = next.run(req).await;
         let status = response.status();
@@ -53,15 +47,11 @@ impl LogMiddleware {
                 log::error!("Internal error --> Response sent", {
                     message: format!("{:?}", error),
                     error_type: error.type_name(),
-                    method: method,
-                    path: path,
                     status: format!("{} - {}", status as u16, status.canonical_reason()),
                     duration: format!("{:?}", start.elapsed()),
                 });
             } else {
                 log::error!("Internal error --> Response sent", {
-                    method: method,
-                    path: path,
                     status: format!("{} - {}", status as u16, status.canonical_reason()),
                     duration: format!("{:?}", start.elapsed()),
                 });
@@ -71,26 +61,16 @@ impl LogMiddleware {
                 log::warn!("Client error --> Response sent", {
                     message: format!("{:?}", error),
                     error_type: error.type_name(),
-                    method: method,
-                    path: path,
                     status: format!("{} - {}", status as u16, status.canonical_reason()),
                     duration: format!("{:?}", start.elapsed()),
                 });
             } else {
                 log::warn!("Client error --> Response sent", {
-                    method: method,
-                    path: path,
                     status: format!("{} - {}", status as u16, status.canonical_reason()),
                     duration: format!("{:?}", start.elapsed()),
                 });
             }
         } else {
-            log::info!("--> Response sent", {
-                method: method,
-                path: path,
-                status: format!("{} - {}", status as u16, status.canonical_reason()),
-                duration: format!("{:?}", start.elapsed()),
-            });
         }
         Ok(response)
     }
