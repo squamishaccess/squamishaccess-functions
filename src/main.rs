@@ -306,11 +306,10 @@ async fn main() -> Result<()> {
     server.at("/").get(get_ping);
     server.at("/api/Paypal-IPN").post(handler);
 
-    let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT")
-        .map_or(80, |v| {
-            v.parse()
-                .expect("FUNCTIONS_CUSTOMHANDLER_PORT must be a number.")
-        });
+    let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT").map_or(80, |v| {
+        v.parse()
+            .expect("FUNCTIONS_CUSTOMHANDLER_PORT must be a number.")
+    });
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
     server
