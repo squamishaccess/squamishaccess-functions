@@ -252,6 +252,10 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     }
 }
 
+async fn get_ping(_req: Request<Arc<State>>) -> tide::Result<Response> {
+    Ok(StatusCode::Ok.into())
+}
+
 #[async_std::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
@@ -299,6 +303,7 @@ async fn main() -> Result<()> {
 
     let mut server = tide::with_state(Arc::new(state));
     server.with(LogMiddleware::new());
+    server.at("/").get(get_ping);
     server.at("/api/Paypal-IPN").post(handler);
 
     let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT")
