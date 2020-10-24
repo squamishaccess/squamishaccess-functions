@@ -325,7 +325,7 @@ async fn main() -> Result<()> {
     server.with(AzureFnMiddleware::new());
     server.with(LogMiddleware::new());
     server.at("/").get(get_ping);
-    server.at("/api/Paypal-IPN").post(handler);
+    server.at("/Paypal-IPN").post(handler);
 
     let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT").map_or(80, |v| {
         v.parse()
