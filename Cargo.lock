@@ -1517,7 +1517,6 @@ dependencies = [
  "femme",
  "futures",
  "http-types",
- "kv-log-macro",
  "log",
  "md5",
  "serde",

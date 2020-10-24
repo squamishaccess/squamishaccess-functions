@@ -8,7 +8,7 @@
         "description": {
             "defaultExecutablePath": "bin/squamishaccess-signup-function-rs.exe"
         },
-        "enableForwardingHttpRequest": true
+        "enableForwardingHttpRequest": false
     },
     "logging": {
         "logLevel": {

@@ -1,5 +1,6 @@
-use kv_log_macro as log;
 use tide::{Middleware, Next, Request, Result};
+
+use super::{AzureFnLogger, AzureFnLoggerExt};
 
 /// Log all incoming requests and responses.
 ///
@@ -38,39 +39,52 @@ impl LogMiddleware {
         }
         req.set_ext(LogMiddlewareHasBeenRun);
 
+        let mut logger = req
+            .ext_mut::<AzureFnLogger>()
+            .expect("Must install AzureFnMiddleware")
+            .clone();
+
         let start = std::time::Instant::now();
         let response = next.run(req).await;
         let status = response.status();
 
         if status.is_server_error() {
             if let Some(error) = response.error() {
-                log::error!("Internal error --> Response sent", {
-                    message: format!("{:?}", error),
-                    error_type: error.type_name(),
-                    status: format!("{} - {}", status as u16, status.canonical_reason()),
-                    duration: format!("{:?}", start.elapsed()),
-                });
+                logger.log(format!("Internal error. message: {:?}, error_type: {:?}, status: {}, duration: {:?}",
+                    error,
+                    error.type_name(),
+                    format!("{} - {}", status as u16, status.canonical_reason()),
+                    start.elapsed(),
+                )).await;
             } else {
-                log::error!("Internal error --> Response sent", {
-                    status: format!("{} - {}", status as u16, status.canonical_reason()),
-                    duration: format!("{:?}", start.elapsed()),
-                });
+                logger
+                    .log(format!(
+                        "Internal error. status: {}, duration: {:?}",
+                        format!("{} - {}", status as u16, status.canonical_reason()),
+                        start.elapsed(),
+                    ))
+                    .await;
             }
         } else if status.is_client_error() {
             if let Some(error) = response.error() {
-                log::warn!("Client error --> Response sent", {
-                    message: format!("{:?}", error),
-                    error_type: error.type_name(),
-                    status: format!("{} - {}", status as u16, status.canonical_reason()),
-                    duration: format!("{:?}", start.elapsed()),
-                });
+                logger
+                    .log(format!(
+                        "Client error. message: {:?}, error_type: {:?}, status: {}, duration: {:?}",
+                        error,
+                        error.type_name(),
+                        format!("{} - {}", status as u16, status.canonical_reason()),
+                        start.elapsed(),
+                    ))
+                    .await;
             } else {
-                log::warn!("Client error --> Response sent", {
-                    status: format!("{} - {}", status as u16, status.canonical_reason()),
-                    duration: format!("{:?}", start.elapsed()),
-                });
+                logger
+                    .log(format!(
+                        "Client error. status: {}, duration: {:?}",
+                        format!("{} - {}", status as u16, status.canonical_reason()),
+                        start.elapsed(),
+                    ))
+                    .await;
             }
-        } else {
         }
         Ok(response)
     }
