@@ -192,6 +192,12 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         status = "pending"
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
+        logger
+            .log(format!(
+                "Mailchimp existing status: {}",
+                mc_json.status.as_str(),
+            ))
+            .await;
         status = match mc_json.status.as_str() {
             "subscribed" => "subscribed",
             "unsubscribed" => "unsubscribed",
