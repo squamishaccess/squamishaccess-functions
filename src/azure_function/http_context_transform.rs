@@ -16,7 +16,6 @@ pub struct AzureFnMiddleware {
 
 struct AzureFnMiddlewareHasBeenRun;
 
-
 impl AzureFnMiddleware {
     /// Create a new instance of `AzureFnMiddleware`.
     #[must_use]
