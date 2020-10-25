@@ -200,7 +200,7 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
             .await;
         status = match mc_json.status.as_str() {
             "subscribed" => "subscribed",
-            "unsubscribed" => "unsubscribed",
+            "unsubscribed" => return Ok(StatusCode::Ok.into()),
             _ => "pending",
         }
     };
