@@ -68,6 +68,7 @@ impl AzureFnMiddleware {
 
         let logger = Arc::try_unwrap(logger).unwrap();
         let out = json!({
+            "Outputs": {}, // Make Azure happy I guess?
             "ReturnValue": res.take_body().into_string().await?,
             "Logs": logger.into_inner().logs,
         });
