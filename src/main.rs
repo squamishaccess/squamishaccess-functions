@@ -8,6 +8,7 @@ use color_eyre::eyre::Result;
 use http_types::auth::BasicAuth;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use surf::{Client, Url};
 use tide::http::Method;
 use tide::{Body, Request, Response, StatusCode};
@@ -27,7 +28,7 @@ struct State {
     paypal_verify: &'static str,
 }
 
-#[derive(Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Debug, Deserialize)]
 struct IPNTransationMessage {
     txn_id: String,
     txn_type: String,
@@ -38,28 +39,12 @@ struct IPNTransationMessage {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[allow(non_snake_case)]
-struct MergeFields {
-    FNAME: String,
-    LNAME: String,
-    JOINED: String,
-    EXPIRES: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct MailchimpRequest<'email> {
-    email_address: &'email str,
-    merge_fields: MergeFields,
-    status: &'static str,
-}
-
-#[derive(Deserialize, Serialize)]
 struct MailchimpResponse {
     status: String,
     email_address: String,
 }
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 struct MailchimpErrorResponse {
     title: String,
 }
@@ -217,16 +202,16 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     let utc_now: DateTime<Utc> = Utc::now();
     let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365 * 5 + 1);
 
-    let mc_req = MailchimpRequest {
-        email_address: &ipn_transaction_message.payer_email,
-        merge_fields: MergeFields {
-            FNAME: ipn_transaction_message.first_name,
-            LNAME: ipn_transaction_message.last_name,
-            JOINED: utc_now.to_rfc3339_opts(Secs, true),
-            EXPIRES: utc_expires.to_rfc3339_opts(Secs, true),
+    let mc_req = json!({
+        "email_address": &ipn_transaction_message.payer_email,
+        "merge_fields": {
+            "FNAME": ipn_transaction_message.first_name,
+            "LNAME": ipn_transaction_message.last_name,
+            "JOINED": utc_now.to_rfc3339_opts(Secs, true),
+            "EXPIRES": utc_expires.to_rfc3339_opts(Secs, true),
         },
-        status,
-    };
+        "status": status,
+    });
 
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
