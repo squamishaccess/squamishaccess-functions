@@ -39,6 +39,7 @@ features = ["h1-client", "encoding"]
 
 [dependencies.tide]
 version = "0.14"
+default-features = false 
 features = ["h1-server"]
 
 [patch.crates-io]

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use serde::Serialize;
-use serde_json::Value;
+use log::info;
+use serde_json::{json, Value};
+use tide::http::headers::CONTENT_TYPE;
 use tide::{Body, Middleware, Next, Request, Result};
 
 use super::AzureFnLoggerInner;
@@ -15,12 +16,6 @@ pub struct AzureFnMiddleware {
 
 struct AzureFnMiddlewareHasBeenRun;
 
-#[derive(Debug, Serialize)]
-#[allow(non_snake_case)]
-struct AzureFnOutput {
-    ReturnValue: String,
-    Logs: Vec<String>,
-}
 
 impl AzureFnMiddleware {
     /// Create a new instance of `AzureFnMiddleware`.
@@ -40,12 +35,15 @@ impl AzureFnMiddleware {
         }
         req.set_ext(AzureFnMiddlewareHasBeenRun);
 
-        let azure_function_payload: Value = req.body_json().await?;
+        let req_data = req.body_string().await?;
+
+        info!("req_data: {}", req_data);
+
+        // let azure_function_payload: Value = req.body_json().await?;
+        let azure_function_payload: Value = serde_json::from_str(&req_data)?;
         let mut invocation_id = "(id missing)".to_string();
-        if let Some(val) = azure_function_payload.pointer("Metadata/Id") {
-            if let Value::String(id) = val {
-                invocation_id = id.to_owned();
-            }
+        if let Some(val) = req.header("X-Azure-Functions-InvocationId") {
+            invocation_id = val.last().as_str().to_string();
         }
 
         let logger = AzureFnLoggerInner {
@@ -56,20 +54,25 @@ impl AzureFnMiddleware {
 
         req.set_ext(logger.clone());
 
-        if let Some(external_req_data) = azure_function_payload.pointer("Data/req") {
-            req.set_body(Body::from_json(external_req_data)?);
+        if let Some(external_req_body) = azure_function_payload.pointer("/Data/req/Body") {
+            info!("external_req_body: {}", external_req_body);
+            if let Value::String(body) = external_req_body {
+                req.set_body(Body::from_string(body.to_owned()));
+            }
         }
 
         let mut res = next.run(req).await;
 
         let logger = Arc::try_unwrap(logger).unwrap();
-        let mut out = AzureFnOutput {
-            ReturnValue: String::new(),
-            Logs: logger.into_inner().logs,
-        };
 
-        out.ReturnValue = res.take_body().into_string().await?;
+        let out = json!({
+            "ReturnValue": res.take_body().into_string().await?,
+            "Logs": logger.into_inner().logs,
+        });
+
         res.set_body(Body::from_json(&out)?);
+        res.remove_header(CONTENT_TYPE);
+        res.insert_header(CONTENT_TYPE, tide::http::mime::JSON);
 
         Ok(res)
     }
