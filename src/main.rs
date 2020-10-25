@@ -309,7 +309,7 @@ async fn main() -> Result<()> {
     let mut server = tide::with_state(Arc::new(state));
     server.with(AzureFnMiddleware::new());
     server.with(LogMiddleware::new());
-    server.at("/monitor/ping").get(get_ping);
+    server.at("/").get(get_ping);
     server.at("/Paypal-IPN").post(handler);
 
     let port: u16 = env::var("FUNCTIONS_CUSTOMHANDLER_PORT").map_or(80, |v| {
