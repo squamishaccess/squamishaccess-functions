@@ -21,9 +21,9 @@ pub trait AzureFnLoggerExt {
     async fn log(&mut self, log_line: String);
 }
 
-#[must_use = "requires await"]
 #[tide::utils::async_trait]
 impl AzureFnLoggerExt for AzureFnLogger {
+    #[must_use = "requires await"]
     async fn log(&mut self, log_line: String) {
         let mut inner = self.write().await;
         let line = format!("{} {}", inner.invocation_id, log_line);
@@ -31,9 +31,9 @@ impl AzureFnLoggerExt for AzureFnLogger {
     }
 }
 
-#[must_use = "requires await"]
 #[tide::utils::async_trait]
 impl AzureFnLoggerExt for &'_ mut AzureFnLogger {
+    #[must_use = "requires await"]
     async fn log(&mut self, log_line: String) {
         let mut inner = self.write().await;
         let line = format!("{} {}", inner.invocation_id, log_line);
