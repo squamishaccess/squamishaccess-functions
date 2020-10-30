@@ -85,12 +85,21 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     // Must be done after we take the main request body.
     let state = req.state();
 
-    let verify_response = state
+    let mut verify_response = state
         .paypal
         .post("cgi-bin/webscr")
         .body(verification_body)
-        .recv_string()
         .await?;
+
+    if !verify_response.status().is_success() {
+        return Err(tide::Error::from_str(
+            StatusCode::InternalServerError,
+            format!(
+                "PayPal IPN veriification failed - status: {}",
+                verify_response.status()
+            ),
+        ));
+    }
 
     let ipn_transaction_message: IPNTransationMessage;
     match serde_qs::from_str(&ipn_transaction_message_raw) {
