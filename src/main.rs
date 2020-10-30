@@ -97,21 +97,19 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         Ok(msg) => {
             ipn_transaction_message = msg;
         }
-        Err(error) => {
-            logger
-                .log(format!(
-                    "Invalid IPN: unparseable IPN: {}",
-                    ipn_transaction_message_raw
-                ))
-                .await;
+        Err(_error) => {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
-                error.to_string(),
+                format!(
+                    "Invalid IPN: unparseable IPN: {}",
+                    ipn_transaction_message_raw
+                ),
             ));
         }
     }
 
-    match verify_response.as_str() {
+    let verify_status = verify_response.body_string().await?;
+    match verify_status.as_str() {
         "VERIFIED" => {
             logger
                 .log(format!(
@@ -121,22 +119,19 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
                 .await
         }
         "INVALID" => {
-            logger
-                .log(format!(
+            return Err(tide::Error::from_str(
+                StatusCode::InternalServerError,
+                format!(
                     "Invalid IPN: IPN message for Transaction ID \"{}\" is invalid",
                     ipn_transaction_message.txn_id
-                ))
-                .await;
-            return Ok(StatusCode::InternalServerError.into());
+                ),
+            ));
         }
         s => {
-            logger
-                .log(format!(
-                    "Invalid IPN: Unexpected IPN verify response body: {}",
-                    s
-                ))
-                .await;
-            return Ok(StatusCode::InternalServerError.into());
+            return Err(tide::Error::from_str(
+                StatusCode::InternalServerError,
+                format!("Invalid IPN: Unexpected IPN verify response body: {}", s),
+            ));
         }
     }
 
@@ -155,14 +150,11 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         "subscr_payment" => (),    // TODO: check amount
         "send_money" => (),        // TODO: check amount
         "recurring_payment" => (), // TODO: check amount
-        _ => {
-            logger
-                .log(format!(
-                    "IPN: Payment status was not \"Completed\": {}",
-                    ipn_transaction_message.payment_status
-                ))
-                .await;
-            return Ok(StatusCode::InternalServerError.into());
+        txn_type => {
+            return Err(tide::Error::from_str(
+                StatusCode::InternalServerError,
+                format!("IPN: txn_type was not acceptible: {}", txn_type),
+            ));
         }
     }
 
@@ -239,17 +231,10 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
     if mailchimp_res.status().is_client_error() || mailchimp_res.status().is_server_error() {
         let error_body = mailchimp_res.body_string().await?;
 
-        logger
-            .log(format!(
-                "Mailchimp error: {} -- {}",
-                mailchimp_res.status(),
-                error_body
-            ))
-            .await;
-
-        Ok(Response::builder(mailchimp_res.status())
-            .body(error_body)
-            .into())
+        Err(tide::Error::from_str(
+            mailchimp_res.status(),
+            format!("Mailchimp error: {}", error_body),
+        ))
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
         if mc_json.status == "pending" || mc_json.status == "subscribed" {
@@ -261,13 +246,13 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
                 .await;
             Ok(StatusCode::Ok.into())
         } else {
-            logger
-                .log(format!(
+            Err(tide::Error::from_str(
+                StatusCode::InternalServerError,
+                format!(
                     "Mailchimp: unsuccessful result: {}",
                     serde_json::to_string(&mc_json)?
-                ))
-                .await;
-            Ok(StatusCode::InternalServerError.into())
+                ),
+            ))
         }
     }
 }
