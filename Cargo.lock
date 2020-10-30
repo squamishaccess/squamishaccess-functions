@@ -786,8 +786,9 @@ dependencies = [
 
 [[package]]
 name = "http-types"
-version = "2.6.0"
-source = "git+https://github.com/Fishrock123/http-types.git?branch=basic-auth#70cbdc6d94cb3f205bbc8ce05a11416e963dca7f"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffa4e35764a650ce8e709c50e985431eb8963eee7fc793d923134d4aa8e530b4"
 dependencies = [
  "anyhow",
  "async-channel",
