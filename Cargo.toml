@@ -1,6 +1,6 @@
 [package]
 name = "squamishaccess-signup-function-rs"
-version = "1.0.2"
+version = "1.1.0"
 authors = ["Jeremiah Senkpiel <fishrock123@rocketmail.com>"]
 edition = "2018"
 license = "BlueOak-1.0.0"
