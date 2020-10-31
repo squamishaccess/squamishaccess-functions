@@ -73,9 +73,10 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
                 req.method()
             ))
             .await;
-        return Ok(Response::builder(StatusCode::MethodNotAllowed)
-            .body(StatusCode::MethodNotAllowed.to_string())
-            .into());
+        return Err(tide::Error::from_str(
+            StatusCode::MethodNotAllowed,
+            StatusCode::MethodNotAllowed.to_string(),
+        ));
     }
     logger
         .log("PayPal IPN Notification Event received successfully.".to_string())
