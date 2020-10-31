@@ -42,7 +42,7 @@ struct State {
 #[derive(Debug, Deserialize)]
 struct IPNTransationMessage {
     txn_id: String,
-    txn_type: String,
+    txn_type: Option<String>,
     payment_status: String,
     payer_email: String,
     first_name: String,
@@ -162,15 +162,21 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         return Ok(StatusCode::Ok.into());
     }
 
-    match ipn_transaction_message.txn_type.as_str() {
-        "web_accept" => (),        // Ok
-        "subscr_payment" => (),    // TODO: check amount
-        "send_money" => (),        // TODO: check amount
-        "recurring_payment" => (), // TODO: check amount
-        txn_type => {
+    match ipn_transaction_message.txn_type.as_deref() {
+        Some("web_accept") => (),        // Ok
+        Some("subscr_payment") => (),    // TODO: check amount
+        Some("send_money") => (),        // TODO: check amount
+        Some("recurring_payment") => (), // TODO: check amount
+        Some(txn_type) => {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
                 format!("IPN: txn_type was not acceptible: {}", txn_type),
+            ));
+        }
+        None => {
+            return Err(tide::Error::from_str(
+                StatusCode::Ok,
+                format!("IPN: no transaction type: {}", ipn_transaction_message_raw),
             ));
         }
     }
