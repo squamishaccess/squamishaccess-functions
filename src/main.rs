@@ -114,12 +114,12 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         Ok(msg) => {
             ipn_transaction_message = msg;
         }
-        Err(_error) => {
+        Err(error) => {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
                 format!(
-                    "Invalid IPN: unparseable IPN: {}",
-                    ipn_transaction_message_raw
+                    "Invalid IPN: unparseable IPN: {} - error: {}",
+                    ipn_transaction_message_raw, error
                 ),
             ));
         }
