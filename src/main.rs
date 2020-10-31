@@ -281,6 +281,8 @@ async fn get_ping(_req: Request<Arc<State>>) -> tide::Result<Response> {
 #[async_std::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
+
+    #[cfg(debug_assertions)] // Non-release mode.
     dotenv::dotenv().ok();
 
     let log_level: femme::LevelFilter = env::var("LOGLEVEL")
