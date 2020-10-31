@@ -6,7 +6,7 @@ mod http_context_transform;
 mod logger;
 
 pub use http_context_transform::AzureFnMiddleware;
-pub use logger::LogMiddleware;
+pub use logger::LogMiddleware as AzureFnLogMiddleware;
 
 pub type AzureFnLogger = Arc<RwLock<AzureFnLoggerInner>>;
 
