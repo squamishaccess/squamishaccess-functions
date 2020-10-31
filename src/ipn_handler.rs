@@ -170,17 +170,10 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     if mailchimp_res.status().is_server_error() {
         let error_body = mailchimp_res.body_string().await?;
 
-        logger
-            .log(format!(
-                "Mailchimp error: {} -- {}",
-                mailchimp_res.status(),
-                error_body
-            ))
-            .await;
-
-        return Ok(Response::builder(mailchimp_res.status())
-            .body(error_body)
-            .into());
+        return Err(tide::Error::from_str(
+            mailchimp_res.status(),
+            format!("Mailchimp GET: error body: {}", error_body),
+        ));
     }
 
     let status;
