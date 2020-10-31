@@ -36,6 +36,7 @@ struct State {
     paypal: Client,
     mc_api_key: String,
     mc_list_id: String,
+    paypal_sandbox: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,6 +86,12 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
 
     // Must be done after we take the main request body.
     let state = req.state();
+
+    if state.paypal_sandbox {
+        logger
+            .log("SANDBOX: Using PayPal sandbox environment".to_string())
+            .await;
+    }
 
     let mut verify_response = state
         .paypal
@@ -292,8 +299,10 @@ async fn main() -> Result<()> {
             .expect("Requires a valid, full mailchimp api key")
     ))?;
 
+    let paypal_sandbox = env::var("PAYPAL_SANDBOX").is_ok();
+
     let paypal_base_url;
-    if env::var("PAYPAL_SANDBOX").is_ok() {
+    if paypal_sandbox {
         warn!("SANDBOX: Using PayPal sandbox environment");
         paypal_base_url = Url::parse(SANDBOX_VERIFY_URL)?;
     } else {
@@ -310,6 +319,7 @@ async fn main() -> Result<()> {
         paypal,
         mc_api_key,
         mc_list_id,
+        paypal_sandbox,
     };
 
     let mut server = tide::with_state(Arc::new(state));
