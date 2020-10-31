@@ -95,7 +95,7 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
 
     let mut verify_response = state
         .paypal
-        .post("cgi-bin/webscr")
+        .post("/cgi-bin/webscr")
         .body(verification_body)
         .await?;
 
@@ -103,7 +103,7 @@ async fn handler(mut req: Request<Arc<State>>) -> tide::Result<Response> {
         return Err(tide::Error::from_str(
             StatusCode::InternalServerError,
             format!(
-                "PayPal IPN veriification failed - status: {}",
+                "PayPal IPN verification failed - status: {}",
                 verify_response.status()
             ),
         ));
