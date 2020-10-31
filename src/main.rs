@@ -21,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use surf::{Client, Url};
 use tide::http::Method;
-use tide::utils::After;
 use tide::{Body, Request, Response, StatusCode};
 
 mod azure_function;
@@ -332,12 +331,6 @@ async fn main() -> Result<()> {
     };
 
     let mut server = tide::with_state(Arc::new(state));
-    server.with(After(|mut res: Response| async {
-        if !res.status().is_success() {
-            res.set_status(StatusCode::Ok);
-        }
-        Ok(res)
-    }));
     server.with(AzureFnMiddleware::new());
     server.with(LogMiddleware::new());
     server.at("/").get(get_ping);

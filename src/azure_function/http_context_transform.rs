@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_std::sync::RwLock;
 use serde_json::{json, Value};
 use tide::http::headers::CONTENT_TYPE;
-use tide::{Body, Middleware, Next, Request, Result};
+use tide::{Body, Middleware, Next, Request, Result, StatusCode};
 
 use super::AzureFnLoggerInner;
 
@@ -68,14 +68,20 @@ impl AzureFnMiddleware {
 
         let logger = Arc::try_unwrap(logger).unwrap();
         let out = json!({
-            "Outputs": {}, // Make Azure happy I guess?
-            "ReturnValue": res.take_body().into_string().await?,
+            "Outputs": {
+                "res": {
+                    "statusCode": res.status(),
+                    "body": res.take_body().into_string().await?
+                }
+            },
             "Logs": logger.into_inner().logs,
         });
 
         res.set_body(Body::from_json(&out)?);
         res.remove_header(CONTENT_TYPE);
         res.insert_header(CONTENT_TYPE, tide::http::mime::JSON);
+
+        res.set_status(StatusCode::Ok);
 
         Ok(res)
     }
