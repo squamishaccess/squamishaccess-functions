@@ -90,7 +90,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
                 format!(
-                    "Invalid IPN: unparseable IPN: {} - error: {}",
+                    "Invalid IPN: unparseable IPN: \"{}\" - error: {}",
                     ipn_transaction_message_raw, error
                 ),
             ));
@@ -111,15 +111,18 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
                 format!(
-                    "Invalid IPN: IPN message for Transaction ID \"{}\" is invalid",
-                    ipn_transaction_message.txn_id
+                    "Invalid IPN: IPN message for Transaction ID \"{}\" is invalid. IPN: \"{}\"",
+                    ipn_transaction_message.txn_id, ipn_transaction_message_raw
                 ),
             ));
         }
-        s => {
+        unknown => {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
-                format!("Invalid IPN: Unexpected IPN verify response body: {}", s),
+                format!(
+                    "Invalid IPN: Unexpected IPN verify response body: \"{}\" - IPN: {}",
+                    unknown, ipn_transaction_message_raw
+                ),
             ));
         }
     }
@@ -141,14 +144,17 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         Some("recurring_payment") => (), // TODO: check amount
         Some(txn_type) => {
             return Err(tide::Error::from_str(
-                StatusCode::InternalServerError,
+                StatusCode::Ok, // Don't want PayPal to retry.
                 format!("IPN: txn_type was not acceptible: {}", txn_type),
             ));
         }
         None => {
             return Err(tide::Error::from_str(
-                StatusCode::Ok,
-                format!("IPN: no transaction type: {}", ipn_transaction_message_raw),
+                StatusCode::Ok, // Don't want PayPal to retry.
+                format!(
+                    "IPN: no transaction type. IPN: \"{}\"",
+                    ipn_transaction_message_raw
+                ),
             ));
         }
     }
@@ -172,7 +178,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
 
         return Err(tide::Error::from_str(
             mailchimp_res.status(),
-            format!("Mailchimp GET: error body: {}", error_body),
+            format!("Mailchimp GET: error body: \"{}\"", error_body),
         ));
     }
 
