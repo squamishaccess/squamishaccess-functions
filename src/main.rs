@@ -19,8 +19,10 @@ use lib::azure_function::{AzureFnLogMiddleware, AzureFnMiddleware};
 use lib::AppState;
 use squamishaccess_signup_function_rs as lib;
 
+/// The main function. The binary is initialized to here.
 #[async_std::main]
 async fn main() -> Result<()> {
+    // Nicer error formatting for start-up errors.
     color_eyre::install()?;
 
     #[cfg(debug_assertions)] // Non-release mode.
@@ -51,11 +53,14 @@ async fn main() -> Result<()> {
         paypal_base_url = Url::parse("https://ipnpb.paypal.com/")?;
     };
 
+    // Set up re-useable api clients for efficiency, connection pooling, ergonomics.
     let mut mailchimp = surf::client();
     mailchimp.set_base_url(mc_base_url);
     let mut paypal = surf::client();
     paypal.set_base_url(paypal_base_url);
 
+    // Application shared state.
+    // This is set behind an atomic reference counted pointer.
     let state = AppState {
         mailchimp,
         paypal,

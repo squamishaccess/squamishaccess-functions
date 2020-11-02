@@ -35,6 +35,9 @@ async fn get_ping(_req: AppRequest) -> tide::Result<Response> {
 }
 
 pub fn setup_routes(server: &mut Server<Arc<AppState>>) {
+    // Required so that Azure known when our custom handler is listening, _I think_.
     server.at("/").get(get_ping);
+
+    // The PayPal IPN handler, set the path where it's `function.json` sits in the project.
     server.at("/Paypal-IPN").post(ipn_handler);
 }

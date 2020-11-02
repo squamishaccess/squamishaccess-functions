@@ -8,6 +8,32 @@ use tide::{Body, Middleware, Next, Request, Result, StatusCode};
 use super::AzureFnLoggerInner;
 
 /// Middleware for non-forwarding Azure Functions
+///
+/// This is required in order to make logging work with azure funtion custom handlers.
+///
+/// This middleware re-writes the request to and from specialized json structures to interface with azure.
+///
+/// This middleware requires that azure `function.json` be set up like so.
+/// In particular, the naming of `req` & `res` MUST be the same.
+/// ```json
+/// {
+///     "bindings": [
+///         {
+///             "name": "req",
+///             "type": "httpTrigger",
+///             "direction": "in",
+///             "methods": [
+///                 "list http methods here"
+///             ]
+///         },
+///         {
+///             "name": "res",
+///             "type": "http",
+///             "direction": "out"
+///         }
+///     ]
+/// }
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct AzureFnMiddleware {
     _priv: (),
@@ -43,6 +69,7 @@ impl AzureFnMiddleware {
         let azure_function_payload: Value = req.body_json().await?;
         if let Some(external_req_body) = azure_function_payload.pointer("/Data/req/Body") {
             if let Value::String(body) = external_req_body {
+                // Re-write the request body to the extracted external request body.
                 req.set_body(Body::from_string(body.to_owned()));
             } else {
                 logs.push(
@@ -64,16 +91,19 @@ impl AzureFnMiddleware {
         let logger = Arc::new(RwLock::new(logger));
         req.set_ext(logger.clone());
 
-        let mut res = next.run(req).await;
+        let mut res = next.run(req).await; // Continue middleware stack.
 
         let logger = Arc::try_unwrap(logger).unwrap();
         let out = json!({
             "Outputs": {
                 "res": {
+                    // The external response status code.
                     "statusCode": res.status(),
+                    // Encapsulate the external response.
                     "body": res.take_body().into_string().await?
                 }
             },
+            // This is currently the only way to log from a custom handler.
             "Logs": logger.into_inner().logs,
         });
 
@@ -81,6 +111,7 @@ impl AzureFnMiddleware {
         res.remove_header(CONTENT_TYPE);
         res.insert_header(CONTENT_TYPE, tide::http::mime::JSON);
 
+        // Azure only like status code 200, and logs get dropped if it is anything else.
         res.set_status(StatusCode::Ok);
 
         Ok(res)

@@ -31,6 +31,7 @@ struct MailchimpErrorResponse {
     title: String,
 }
 
+/// Handle a PayPal Instant Payment Notification (IPN) and attempt to subscribe to MailChimp.
 pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let mut logger = req
         .ext_mut::<AzureFnLogger>()
@@ -57,6 +58,8 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let verification_body = ["cmd=_notify-validate&", &ipn_transaction_message_raw].concat();
 
     // Must be done after we take the main request body.
+    //
+    // An atomic reference-counted pointer to our application state, with shared http clients.
     let state = req.state();
 
     if state.paypal_sandbox {
@@ -65,6 +68,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             .await;
     }
 
+    // Verify the IPN with PayPal. PayPal requires this.
     let mut verify_response = state
         .paypal
         .post("/cgi-bin/webscr")
@@ -81,6 +85,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         ));
     }
 
+    // Attempt to deserialize the IPN message.
     let ipn_transaction_message: IPNTransationMessage;
     match serde_qs::from_str(&ipn_transaction_message_raw) {
         Ok(msg) => {
@@ -97,6 +102,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         }
     }
 
+    // Check the result of IPN verification.
     let verify_status = verify_response.body_string().await?;
     match verify_status.as_str() {
         "VERIFIED" => {
@@ -127,6 +133,9 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         }
     }
 
+    // Anything that isn't "Completed" we don't care about.
+    //
+    // Usually this means a "Completed" IPN will be sent later from a pending transaction.
     if ipn_transaction_message.payment_status != "Completed" {
         logger
             .log(format!(
@@ -137,6 +146,9 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         return Ok(StatusCode::Ok.into());
     }
 
+    // PayPal buttons - the SAS sign-up link - is a "web_accept".
+    //
+    // For anyone who's set up any sort of recurring payment we'll also subscribe them too. Why not.
     match ipn_transaction_message.txn_type.as_deref() {
         Some("web_accept") => (),        // Ok
         Some("subscr_payment") => (),    // TODO: check amount
@@ -163,9 +175,11 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         .log(format!("Email: {}", ipn_transaction_message.payer_email))
         .await;
 
+    // The MailChimp api is a bit strange.
     let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
     let authz = BasicAuth::new("any", &state.mc_api_key);
 
+    // Check if the person is already in our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp
@@ -184,6 +198,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
 
     let status;
     if mailchimp_res.status().is_client_error() {
+        // If the person is not in our list, set them as pending to give them an opportunity to properly accept if they want an email subscription.
         status = "pending"
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
@@ -194,8 +209,9 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             ))
             .await;
         status = match mc_json.status.as_str() {
-            "subscribed" => "subscribed",
+            // Don't re-subscribe someone who has unsubscribed from our emails. They will still be a list member regardless.
             "unsubscribed" => return Ok(StatusCode::Ok.into()),
+            "subscribed" => "subscribed",
             _ => "pending",
         }
     };
@@ -203,6 +219,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let utc_now: DateTime<Utc> = Utc::now();
     let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365 * 5 + 1);
 
+    // Set up the new member's MailChimp information.
     let mc_req = json!({
         "email_address": &ipn_transaction_message.payer_email,
         "merge_fields": {
@@ -214,6 +231,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         "status": status,
     });
 
+    // Add the new member to our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp

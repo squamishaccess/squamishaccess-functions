@@ -16,6 +16,7 @@ pub struct AzureFnLoggerInner {
     invocation_id: String,
 }
 
+/// Makes logging to the AzureFnLogger less code-verbose.
 #[tide::utils::async_trait]
 pub trait AzureFnLoggerExt {
     async fn log(&mut self, log_line: String);

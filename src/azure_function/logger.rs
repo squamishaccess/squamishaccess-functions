@@ -2,18 +2,9 @@ use tide::{Middleware, Next, Request, Result};
 
 use super::{AzureFnLogger, AzureFnLoggerExt};
 
-/// Log all incoming requests and responses.
+/// Logging middleware for Azure Functions.
 ///
-/// This middleware is enabled by default in Tide. In the case of
-/// nested applications, this middleware will only run once for each
-/// request.
-///
-/// # Examples
-///
-/// ```
-/// let mut app = tide::Server::new();
-/// app.with(tide::log::LogMiddleware::new());
-/// ```
+/// Must be used with `AzureFnMiddleware`.
 #[derive(Debug, Default, Clone)]
 pub struct LogMiddleware {
     _priv: (),
@@ -45,7 +36,7 @@ impl LogMiddleware {
             .clone();
 
         let start = std::time::Instant::now();
-        let response = next.run(req).await;
+        let response = next.run(req).await; // Continue middleware stack.
         let status = response.status();
 
         if status.is_server_error() {
