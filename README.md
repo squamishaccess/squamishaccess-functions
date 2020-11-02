@@ -12,7 +12,7 @@ This repository contains the source code for an Azure Function handling the sign
 
 This is a [Rust](https://www.rust-lang.org/) project. To build, run `cargo build`. If you do not have the rust compiler available, install it with [rustup](https://rustup.rs).
 
-The actual PayPal IPN handler is in `ipn_handler.rs`.
+The actual PayPal IPN handler is in `src/ipn_handler.rs`.
 Everything else is server setup / azure function compatibility.
 
 The code is formatted using `cargo fmt`. Install via `cargo install rustfmt`.
