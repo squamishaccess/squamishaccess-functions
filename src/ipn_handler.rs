@@ -18,6 +18,8 @@ struct IPNTransationMessage {
     payer_email: String,
     first_name: String,
     last_name: String,
+    mc_currency: String,
+    mc_gross: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -146,6 +148,19 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         return Ok(StatusCode::Ok.into());
     }
 
+    // Temporary: figure out why kind of payment values PayPal is actually giving us, as the docs are unclear.
+    logger
+        .log(format!(
+            "IPN: type: \"{}\" - currency: \"{}\" - gross amount: \"{}\"",
+            ipn_transaction_message
+                .txn_type
+                .as_deref()
+                .unwrap_or("(missing txn_type)"),
+            ipn_transaction_message.mc_currency,
+            ipn_transaction_message.mc_gross
+        ))
+        .await;
+
     // PayPal buttons - the SAS sign-up link - is a "web_accept".
     //
     // For anyone who's set up any sort of recurring payment we'll also subscribe them too. Why not.
@@ -157,7 +172,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         Some(txn_type) => {
             return Err(tide::Error::from_str(
                 StatusCode::Ok, // Don't want PayPal to retry.
-                format!("IPN: txn_type was not acceptible: {}", txn_type),
+                format!("IPN: txn_type was not acceptable: {}", txn_type),
             ));
         }
         None => {
