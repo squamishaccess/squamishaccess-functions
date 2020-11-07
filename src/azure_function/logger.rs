@@ -2,6 +2,13 @@ use tide::{Middleware, Next, Request, Result};
 
 use super::{AzureFnLogger, AzureFnLoggerExt};
 
+#[macro_export]
+macro_rules! info {
+    ($logger:expr, $($arg:tt)+) => ({
+        $logger.log(format!($($arg)*)).await;
+    })
+}
+
 /// Logging middleware for Azure Functions.
 ///
 /// Must be used with `AzureFnMiddleware`.

@@ -3,7 +3,9 @@ use std::sync::Arc;
 use async_std::sync::RwLock;
 
 mod http_context_transform;
-mod logger;
+
+#[macro_use]
+pub mod logger;
 
 pub use http_context_transform::AzureFnMiddleware;
 pub use logger::LogMiddleware as AzureFnLogMiddleware;

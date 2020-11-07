@@ -14,6 +14,7 @@ use log::warn;
 use surf::Client;
 use tide::{Request, Response, Server, StatusCode};
 
+#[macro_use]
 pub mod azure_function;
 mod ipn_handler;
 

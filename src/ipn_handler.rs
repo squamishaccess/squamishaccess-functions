@@ -7,6 +7,7 @@ use serde_json::json;
 use tide::http::Method;
 use tide::{Body, Response, StatusCode};
 
+// The info! logging macro comes from crate::azure_function::logger
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
 use crate::AppRequest;
 
@@ -41,20 +42,20 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         .clone();
 
     if req.method() != Method::Post {
-        logger
-            .log(format!(
-                "Request method was not allowed. Was: {}",
-                req.method()
-            ))
-            .await;
+        info!(
+            logger,
+            "Request method was not allowed. Was: {}",
+            req.method()
+        );
         return Err(tide::Error::from_str(
             StatusCode::MethodNotAllowed,
             StatusCode::MethodNotAllowed.to_string(),
         ));
     }
-    logger
-        .log("PayPal IPN Notification Event received successfully.".to_string())
-        .await;
+    info!(
+        logger,
+        "PayPal IPN Notification Event received successfully."
+    );
 
     let ipn_transaction_message_raw = req.body_string().await?;
     let verification_body = ["cmd=_notify-validate&", &ipn_transaction_message_raw].concat();
@@ -65,9 +66,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let state = req.state();
 
     if state.paypal_sandbox {
-        logger
-            .log("SANDBOX: Using PayPal sandbox environment".to_string())
-            .await;
+        info!(logger, "SANDBOX: Using PayPal sandbox environment");
     }
 
     // Verify the IPN with PayPal. PayPal requires this.
@@ -108,12 +107,11 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let verify_status = verify_response.body_string().await?;
     match verify_status.as_str() {
         "VERIFIED" => {
-            logger
-                .log(format!(
-                    "Verified IPN: IPN message for Transaction ID \"{}\" is verified",
-                    ipn_transaction_message.txn_id
-                ))
-                .await
+            info!(
+                logger,
+                "Verified IPN: IPN message for Transaction ID \"{}\" is verified",
+                ipn_transaction_message.txn_id
+            );
         }
         "INVALID" => {
             return Err(tide::Error::from_str(
@@ -139,27 +137,24 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     //
     // Usually this means a "Completed" IPN will be sent later from a pending transaction.
     if ipn_transaction_message.payment_status != "Completed" {
-        logger
-            .log(format!(
-                "IPN: Payment status was not \"Completed\": {}",
-                ipn_transaction_message.payment_status
-            ))
-            .await;
+        info!(
+            logger,
+            "IPN: Payment status was not \"Completed\": {}", ipn_transaction_message.payment_status
+        );
         return Ok(StatusCode::Ok.into());
     }
 
     // Temporary: figure out why kind of payment values PayPal is actually giving us, as the docs are unclear.
-    logger
-        .log(format!(
-            "IPN: type: \"{}\" - currency: \"{}\" - gross amount: \"{}\"",
-            ipn_transaction_message
-                .txn_type
-                .as_deref()
-                .unwrap_or("(missing txn_type)"),
-            ipn_transaction_message.mc_currency,
-            ipn_transaction_message.mc_gross
-        ))
-        .await;
+    info!(
+        logger,
+        "IPN: type: \"{}\" - currency: \"{}\" - gross amount: \"{}\"",
+        ipn_transaction_message
+            .txn_type
+            .as_deref()
+            .unwrap_or("(missing txn_type)"),
+        ipn_transaction_message.mc_currency,
+        ipn_transaction_message.mc_gross
+    );
 
     // PayPal buttons - the SAS sign-up link - is a "web_accept".
     //
@@ -186,9 +181,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         }
     }
 
-    logger
-        .log(format!("Email: {}", ipn_transaction_message.payer_email))
-        .await;
+    info!(logger, "Email: {}", ipn_transaction_message.payer_email);
 
     // The MailChimp api is a bit strange.
     let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
@@ -217,12 +210,11 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         status = "pending"
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
-        logger
-            .log(format!(
-                "Mailchimp existing status: {}",
-                mc_json.status.as_str(),
-            ))
-            .await;
+        info!(
+            logger,
+            "Mailchimp existing status: {}",
+            mc_json.status.as_str(),
+        );
         status = match mc_json.status.as_str() {
             // Don't re-subscribe someone who has unsubscribed from our emails. They will still be a list member regardless.
             "unsubscribed" => return Ok(StatusCode::Ok.into()),
@@ -265,12 +257,12 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
         if mc_json.status == "pending" || mc_json.status == "subscribed" {
-            logger
-                .log(format!(
-                    "Mailchimp: successfully set subscription status \"{}\" for: {}",
-                    mc_json.status, mc_json.email_address
-                ))
-                .await;
+            info!(
+                logger,
+                "Mailchimp: successfully set subscription status \"{}\" for: {}",
+                mc_json.status,
+                mc_json.email_address
+            );
             Ok(StatusCode::Ok.into())
         } else {
             Err(tide::Error::from_str(
