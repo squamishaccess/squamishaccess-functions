@@ -4,7 +4,9 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
+      - staging
+      - trying
 
 env:
   RUSTFLAGS: -Dwarnings
@@ -19,7 +21,7 @@ jobs:
         rust: [stable]
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@git
 
     - name: Install ${{ matrix.rust }}
       uses: actions-rs/toolchain@v1
@@ -31,31 +33,25 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --all --benches --bins --examples --tests
+        args: --workspace --benches --bins --examples --tests
 
     - name: tests
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --all
+        args: --workspace
 
-  check_fmt_and_docs:
+  check_fmt_clippy_docs:
     name: Checking fmt, clippy, and docs
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
 
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
-        components: rustfmt, clippy
-        override: true
-
     - name: clippy
-      run: cargo clippy --tests --examples -- -D warnings
+      run: cargo clippy --workspace --benches --bins --examples --tests -- -D warnings
 
     - name: fmt
       run: cargo fmt --all -- --check
 
-    - name: Docs
+    - name: docs
       run: cargo doc --no-deps
