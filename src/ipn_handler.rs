@@ -21,6 +21,7 @@ struct IPNTransationMessage {
     last_name: String,
     mc_currency: String,
     mc_gross: String,
+    exchange_rate: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -147,13 +148,17 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     // Temporary: figure out why kind of payment values PayPal is actually giving us, as the docs are unclear.
     info!(
         logger,
-        "IPN: type: \"{}\" - currency: \"{}\" - gross amount: \"{}\"",
+        "IPN: type: \"{}\" - gross amount: {} - currency: {} - exchange rate: {}",
         ipn_transaction_message
             .txn_type
             .as_deref()
             .unwrap_or("(missing txn_type)"),
         ipn_transaction_message.mc_currency,
-        ipn_transaction_message.mc_gross
+        ipn_transaction_message.mc_gross,
+        ipn_transaction_message
+        .exchange_rate
+        .as_deref()
+        .unwrap_or("(none)"),
     );
 
     // PayPal buttons - the SAS sign-up link - is a "web_accept".
