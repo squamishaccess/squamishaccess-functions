@@ -35,6 +35,6 @@ default-features = false
 features = ["h1-client", "encoding"]
 
 [dependencies.tide]
-version = "0.14"
+version = "0.15"
 default-features = false 
 features = ["h1-server"]
