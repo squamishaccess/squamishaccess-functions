@@ -38,3 +38,6 @@ features = ["h1-client", "encoding"]
 version = "0.15"
 default-features = false 
 features = ["h1-server"]
+
+[profile.release]
+lto = true
