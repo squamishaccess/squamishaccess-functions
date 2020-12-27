@@ -156,9 +156,9 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         ipn_transaction_message.mc_currency,
         ipn_transaction_message.mc_gross,
         ipn_transaction_message
-        .exchange_rate
-        .as_deref()
-        .unwrap_or("(none)"),
+            .exchange_rate
+            .as_deref()
+            .unwrap_or("(none)"),
     );
 
     // PayPal buttons - the SAS sign-up link - is a "web_accept".
