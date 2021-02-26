@@ -22,6 +22,7 @@ struct IPNTransationMessage {
     mc_currency: String,
     mc_gross: String,
     exchange_rate: Option<String>,
+    payment_date: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -102,6 +103,10 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
                 ),
             ));
         }
+    }
+
+    if let Some(payment_date) = ipn_transaction_message.payment_date {
+        info!(logger, "Payment Timestamp: {}", payment_date);
     }
 
     // Check the result of IPN verification.
