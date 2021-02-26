@@ -25,6 +25,12 @@ features = ["attributes"]
 version = "0.4"
 features = ["serde"]
 
+# Fix http-client's features for the h1 client even though we do not depend on it directly.
+[dependencies.http-client]
+version = "6.3.1"
+default-features = false
+features = ["h1_client", "native-tls"]
+
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
