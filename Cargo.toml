@@ -25,11 +25,12 @@ features = ["attributes"]
 version = "0.4"
 features = ["serde"]
 
-# Fix http-client's features for the h1 client even though we do not depend on it directly.
 [dependencies.http-client]
-version = "6.3.1"
+# Pin to a version of http-client before connection pooling, as that feature may be causing timed out sockets to be reused.
+version = "=6.2.0"
 default-features = false
-features = ["h1_client", "native-tls"]
+# (6.3.0+) # Fix http-client's features for the h1 client even though we do not depend on it directly.
+features = ["h1_client"] #, "native-tls"]
 
 [dependencies.serde]
 version = "1.0"
