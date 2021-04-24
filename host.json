@@ -6,7 +6,7 @@
     },
     "customHandler": {
         "description": {
-            "defaultExecutablePath": "bin/squamishaccess-signup-function-rs.exe"
+            "defaultExecutablePath": "bin/squamishaccess-functions.exe"
         },
         "enableForwardingHttpRequest": false
     },

@@ -1546,7 +1546,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "squamishaccess-signup-function-rs"
+name = "squamishaccess-functions"
 version = "1.4.1"
 dependencies = [
  "async-std",

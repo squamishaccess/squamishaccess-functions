@@ -15,9 +15,10 @@ use color_eyre::eyre::Result;
 use log::{info, warn};
 use surf::Url;
 
+use squamishaccess_functions as lib;
 use lib::azure_function::{AzureFnLogMiddleware, AzureFnMiddleware};
 use lib::AppState;
-use squamishaccess_signup_function_rs as lib;
+
 
 /// The main function. The binary is initialized to here.
 #[async_std::main]

@@ -1,5 +1,5 @@
 [package]
-name = "squamishaccess-signup-function-rs"
+name = "squamishaccess-functions"
 version = "1.4.1"
 authors = ["Jeremiah Senkpiel <fishrock123@rocketmail.com>"]
 edition = "2018"

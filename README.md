@@ -1,4 +1,4 @@
-# SAS Sign-up Function (Rust)
+# SAS Azure Functions
 
 **[Squamish Access Society](https://squamishaccess.ca/)**
 > Advocating for responsible stewardship of the cliffs and crags in the greater Squamish Area.</br>
@@ -6,7 +6,10 @@
 
 ----
 
-This repository contains the source code for an Azure Function handling the sign-up payments for the Squamish Access Society.
+This repository contains the source code for Azure Functions handling various needs for the Squamish Access Society.
+
+Current functions:
+- `Paypal-IPN`: Sign-up payment from PayPal IPNs.
 
 ## Repository layout
 
@@ -30,7 +33,7 @@ Must be built with a `x86_64-pc-windows` toolchain.
 
 - `rm bin/squamishaccess-signup-function-rs.exe`
 - `cargo build --release`
-- `cp target\release\squamishaccess-signup-function-rs.exe bin/squamishaccess-signup-function-rs.exe`
+- `cp target\release\squamishaccess-functions.exe bin/squamishaccess-functions.exe`
 - `cargo clean`
 - deploy via Azure Core Tools v3 / VS Code extension
 
