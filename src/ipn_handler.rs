@@ -11,6 +11,7 @@ use tide::{Body, Response, StatusCode};
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
 use crate::AppRequest;
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Deserialize)]
 struct IPNTransationMessage {
     txn_id: String,
