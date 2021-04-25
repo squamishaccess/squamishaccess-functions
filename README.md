@@ -10,6 +10,7 @@ This repository contains the source code for Azure Functions handling various ne
 
 Current functions:
 - `Paypal-IPN`: Sign-up payment from PayPal IPNs.
+- `Membership-Check`: Membership check by email.
 
 ## Repository layout
 
