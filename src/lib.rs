@@ -16,9 +16,13 @@ use tide::{Request, Response, Server, StatusCode};
 
 #[macro_use]
 pub mod azure_function;
+
+// Our functions
 mod ipn_handler;
+mod membership_check;
 
 use ipn_handler::ipn_handler;
+use membership_check::membership_check;
 
 #[derive(Debug)]
 pub struct AppState {
@@ -41,4 +45,7 @@ pub fn setup_routes(server: &mut Server<Arc<AppState>>) {
 
     // The PayPal IPN handler, set the path where it's `function.json` sits in the project.
     server.at("/Paypal-IPN").post(ipn_handler);
+
+    // The Hembership Check handler, set the path where it's `function.json` sits in the project.
+    server.at("/Membership-Check").post(membership_check);
 }
