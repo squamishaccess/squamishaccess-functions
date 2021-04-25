@@ -27,10 +27,14 @@ use membership_check::membership_check;
 #[derive(Debug)]
 pub struct AppState {
     pub mailchimp: Client,
-    pub paypal: Client,
+    pub mandrill: Client, // Mailchimp's transactional email api
+    pub mandrill_key: String,
     pub mc_api_key: String,
     pub mc_list_id: String,
+    pub paypal: Client,
     pub paypal_sandbox: bool,
+    pub template_membership_check: String, // mailchimp email template name
+    pub template_membership_notfound: String, // mailchimp email template name
 }
 
 pub type AppRequest = Request<Arc<AppState>>;

@@ -11,7 +11,6 @@ use crate::AppRequest;
 struct MailchimpResponse {
     status: String,
     email_address: String,
-    merge_fields: Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,23 +62,70 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
             };
 
             let body = json!({
-                "membership": membership,
-                "expiration": mc_json.merge_fields.get("EXPIRES")
+                "key": state.mandrill_key,
+                "template_name": state.template_membership_check,
+                "template_content": [],
+                "message": {
+                    "to": [{
+                        "email": mc_json.email_address
+                    }]
+                },
+                "global_merge_vars": [{
+                    "name": "STATUS",
+                    "content": membership,
+                }]
             });
 
-            Ok(Response::builder(StatusCode::Ok).body(body).into())
+            let mandrill_path = format!("api/1.0/messages/send-template");
+            let mut mandrill_res = state.mandrill.post(&mandrill_path).body(body).await?;
+            let status = mandrill_res.status();
+
+            let res_body = mandrill_res.body_string().await?;
+            info!(logger, "Mandrill response: {}", res_body);
+
+            let res_body: Value = serde_json::from_str(&res_body)?;
+            if res_body.pointer("0/reject_reason").is_some() {
+                Ok(StatusCode::BadRequest.into())
+            } else if status.is_client_error() || status.is_server_error() {
+                Ok(StatusCode::InternalServerError.into())
+            } else {
+                Ok(StatusCode::Ok.into())
+            }
         }
         StatusCode::NotFound => {
             info!(logger, "No such member: {}", email);
 
-            Ok(Response::builder(StatusCode::NotFound)
-                .body("No such member")
-                .into())
+            let body = json!({
+                "key": state.mandrill_key,
+                "template_name": state.template_membership_notfound,
+                "template_content": [],
+                "message": {
+                    "to": [{
+                        "email": email
+                    }]
+                },
+            });
+
+            let mandrill_path = format!("api/1.0/messages/send-template");
+            let mut mandrill_res = state.mandrill.post(&mandrill_path).body(body).await?;
+            let status = mandrill_res.status();
+
+            let res_body = mandrill_res.body_string().await?;
+            info!(logger, "Mandrill response: {}", res_body);
+
+            let res_body: Value = serde_json::from_str(&res_body)?;
+            if res_body.pointer("0/reject_reason").is_some() {
+                Ok(StatusCode::BadRequest.into())
+            } else if status.is_client_error() || status.is_server_error() {
+                Ok(StatusCode::InternalServerError.into())
+            } else {
+                Ok(StatusCode::Ok.into())
+            }
         }
         s if s.is_client_error() => {
             info!(
                 logger,
-                "Client error: {} - {}",
+                "Mailchimp (mandrill) client error: {} - {}",
                 s,
                 mailchimp_res.body_string().await?
             );
@@ -91,7 +137,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
             // Something else?
             info!(
                 logger,
-                "Unknown status: {} - {}",
+                "Mailchimp (mandrill) unknown status: {} - {}",
                 s,
                 mailchimp_res.body_string().await?
             );

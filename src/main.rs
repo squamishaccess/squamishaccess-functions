@@ -34,6 +34,7 @@ async fn main() -> Result<()> {
     femme::with_level(log_level);
     info!("Logger started - level: {}", log_level);
 
+    // MailChimp
     let mc_api_key = env::var("MAILCHIMP_API_KEY").expect("MAILCHIMP_API_KEY is required.");
     let mc_list_id = env::var("MAILCHIMP_LIST_ID").expect("MAILCHIMP_LIST_ID is required.");
     let mc_base_url = Url::parse(&format!(
@@ -44,6 +45,16 @@ async fn main() -> Result<()> {
             .expect("Requires a valid, full mailchimp api key")
     ))?;
 
+    // Mandrill (MailChimp transactional email sends)
+    let mandrill_key = env::var("MANDRILL_API_KEY").expect("MANDRILL_API_KEY is required.");
+
+    // MailChimp email templates
+    let template_membership_check =
+        env::var("MC_TEMPLATE_MEMBERSHIP_CHECK").unwrap_or_else(|_| "membership-check".to_string());
+    let template_membership_notfound = env::var("MC_TEMPLATE_MEMBERSHIP_NOTFOUND")
+        .unwrap_or_else(|_| "membership-notfound".to_string());
+
+    // PayPal
     let paypal_sandbox = env::var("PAYPAL_SANDBOX").is_ok();
     let paypal_base_url;
     if paypal_sandbox {
@@ -56,6 +67,8 @@ async fn main() -> Result<()> {
     // Set up re-useable api clients for efficiency, connection pooling, ergonomics.
     let mut mailchimp = surf::client();
     mailchimp.set_base_url(mc_base_url);
+    let mut mandrill = surf::client();
+    mandrill.set_base_url(Url::parse("https://mandrillapp.com/")?);
     let mut paypal = surf::client();
     paypal.set_base_url(paypal_base_url);
 
@@ -63,10 +76,14 @@ async fn main() -> Result<()> {
     // This is set behind an atomic reference counted pointer.
     let state = AppState {
         mailchimp,
-        paypal,
+        mandrill,
+        mandrill_key,
         mc_api_key,
         mc_list_id,
+        paypal,
         paypal_sandbox,
+        template_membership_check,
+        template_membership_notfound,
     };
 
     let mut server = tide::with_state(Arc::new(state));
