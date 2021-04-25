@@ -19,7 +19,7 @@ struct MailchimpErrorResponse {
     title: String,
 }
 
-/// Handle a PayPal Instant Payment Notification (IPN) and attempt to subscribe to MailChimp.
+/// Check if an email is in MailChimp & when it's expiry date is, if available.
 pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
     let mut logger = req
         .ext_mut::<AzureFnLogger>()
@@ -44,7 +44,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
     let hash = md5::compute(&email.to_lowercase());
     let authz = BasicAuth::new("any", &state.mc_api_key);
 
-    // Add the new member to our MailChimp list.
+    // Attempt to fetch the member to our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp
