@@ -24,6 +24,7 @@ The code is formatted using `cargo fmt`. Install via `cargo install rustfmt`.
 The following environment variables are accepted (or in `.env`):
 - `MAILCHIMP_API_KEY` (required)
 - `MAILCHIMP_LIST_ID` (required)
+- `MANDRILL_API_KEY` (required)
 - `MC_TEMPLATE_MEMBERSHIP_CHECK` (optional, an override)
     - The name of the membership check mailchimp template.
 - `MC_TEMPLATE_MEMBERSHIP_NOTFOUND` (optional, an override)
