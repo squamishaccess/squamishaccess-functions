@@ -29,7 +29,7 @@ The following environment variables are accepted (or in `.env`):
 ### Deploying
 
 Currently only set up to deploy to a windows environment.
-Must be built with a `x86_64-pc-windows` toolchain.
+Must be built with a `x86_64-pc-windows` Rust toolchain.
 
 - `rm bin/squamishaccess-signup-function-rs.exe`
 - `cargo build --release`

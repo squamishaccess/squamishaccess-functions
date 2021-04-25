@@ -111,7 +111,7 @@ impl AzureFnMiddleware {
         res.remove_header(CONTENT_TYPE);
         res.insert_header(CONTENT_TYPE, tide::http::mime::JSON);
 
-        // Azure only like status code 200, and logs get dropped if it is anything else.
+        // Azure only likes status code 200, and logs get dropped if it is anything else.
         res.set_status(StatusCode::Ok);
 
         Ok(res)
