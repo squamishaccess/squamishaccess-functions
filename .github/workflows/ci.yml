@@ -21,7 +21,7 @@ jobs:
         rust: [stable]
 
     steps:
-    - uses: actions/checkout@git
+    - uses: actions/checkout@master
 
     - name: Install ${{ matrix.rust }}
       uses: actions-rs/toolchain@v1
