@@ -109,14 +109,11 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 .header(authz.name(), authz.value())
                 .body(body)
                 .await?;
-            let status = twilio_res.status();
 
-            let res_body = twilio_res.body_string().await?;
-            info!(logger, "Twilio response: {}", res_body);
-
-            if status == StatusCode::Accepted {
+            if twilio_res.status() == StatusCode::Accepted {
                 Ok(StatusCode::Accepted.into())
             } else {
+                info!(logger, "Twilio error: {}", twilio_res.body_string().await?);
                 Ok(StatusCode::InternalServerError.into())
             }
         }
@@ -138,20 +135,20 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "template_id": state.template_membership_notfound
             });
 
+            let authz =
+                Authorization::new(AuthenticationScheme::Bearer, state.twilio_api_key.clone());
+
             let mut twilio_res = state
                 .twilio
                 .post("v3/mail/send")
                 .header(authz.name(), authz.value())
                 .body(body)
                 .await?;
-            let status = twilio_res.status();
 
-            let res_body = twilio_res.body_string().await?;
-            info!(logger, "Twilio response: {}", res_body);
-
-            if status == StatusCode::Accepted {
+            if twilio_res.status() == StatusCode::Accepted {
                 Ok(StatusCode::Accepted.into())
             } else {
+                info!(logger, "Twilio error: {}", twilio_res.body_string().await?);
                 Ok(StatusCode::InternalServerError.into())
             }
         }
