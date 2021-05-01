@@ -45,13 +45,13 @@ async fn main() -> Result<()> {
             .expect("Requires a valid, full mailchimp api key")
     ))?;
 
-    // Mandrill (MailChimp transactional email sends)
-    let mandrill_key = env::var("MANDRILL_API_KEY").expect("MANDRILL_API_KEY is required.");
+    // Twilio (email sends)
+    let twilio_api_key = env::var("TWILIO_API_KEY").expect("TWILIO_API_KEY is required.");
 
-    // MailChimp email templates
+    // Twilio email templates
     let template_membership_check =
-        env::var("MC_TEMPLATE_MEMBERSHIP_CHECK").unwrap_or_else(|_| "membership-check".to_string());
-    let template_membership_notfound = env::var("MC_TEMPLATE_MEMBERSHIP_NOTFOUND")
+        env::var("TEMPLATE_MEMBERSHIP_CHECK").unwrap_or_else(|_| "membership-check".to_string());
+    let template_membership_notfound = env::var("TEMPLATE_MEMBERSHIP_NOTFOUND")
         .unwrap_or_else(|_| "membership-notfound".to_string());
 
     // PayPal
@@ -67,8 +67,8 @@ async fn main() -> Result<()> {
     // Set up re-useable api clients for efficiency, connection pooling, ergonomics.
     let mut mailchimp = surf::client();
     mailchimp.set_base_url(mc_base_url);
-    let mut mandrill = surf::client();
-    mandrill.set_base_url(Url::parse("https://mandrillapp.com/")?);
+    let mut twilio = surf::client();
+    twilio.set_base_url(Url::parse("https://api.sendgrid.com/")?);
     let mut paypal = surf::client();
     paypal.set_base_url(paypal_base_url);
 
@@ -76,14 +76,14 @@ async fn main() -> Result<()> {
     // This is set behind an atomic reference counted pointer.
     let state = AppState {
         mailchimp,
-        mandrill,
-        mandrill_key,
         mc_api_key,
         mc_list_id,
         paypal,
         paypal_sandbox,
         template_membership_check,
         template_membership_notfound,
+        twilio,
+        twilio_api_key,
     };
 
     let mut server = tide::with_state(Arc::new(state));

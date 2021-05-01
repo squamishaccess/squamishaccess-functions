@@ -27,14 +27,14 @@ use membership_check::membership_check;
 #[derive(Debug)]
 pub struct AppState {
     pub mailchimp: Client,
-    pub mandrill: Client, // Mailchimp's transactional email api
-    pub mandrill_key: String,
     pub mc_api_key: String,
     pub mc_list_id: String,
     pub paypal: Client,
     pub paypal_sandbox: bool,
-    pub template_membership_check: String, // mailchimp email template name
-    pub template_membership_notfound: String, // mailchimp email template name
+    pub template_membership_check: String, // twilio email template id
+    pub template_membership_notfound: String, // twilio email template id
+    pub twilio: Client,                    // Email sending
+    pub twilio_api_key: String,
 }
 
 pub type AppRequest = Request<Arc<AppState>>;
@@ -50,6 +50,6 @@ pub fn setup_routes(server: &mut Server<Arc<AppState>>) {
     // The PayPal IPN handler, set the path where it's `function.json` sits in the project.
     server.at("/Paypal-IPN").post(ipn_handler);
 
-    // The Hembership Check handler, set the path where it's `function.json` sits in the project.
+    // The Membership Check handler, set the path where it's `function.json` sits in the project.
     server.at("/Membership-Check").post(membership_check);
 }

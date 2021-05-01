@@ -24,11 +24,11 @@ The code is formatted using `cargo fmt`. Install via `cargo install rustfmt`.
 The following environment variables are accepted (or in `.env`):
 - `MAILCHIMP_API_KEY` (required)
 - `MAILCHIMP_LIST_ID` (required)
-- `MANDRILL_API_KEY` (required)
-- `MC_TEMPLATE_MEMBERSHIP_CHECK` (optional, an override)
-    - The name of the membership check mailchimp template.
-- `MC_TEMPLATE_MEMBERSHIP_NOTFOUND` (optional, an override)
-    - The name of the membership check not found mailchimp template.
+- `TWILIO_API_KEY` (required)
+- `TEMPLATE_MEMBERSHIP_CHECK` (optional, an override)
+    - The id of the membership check twilio template.
+- `TEMPLATE_MEMBERSHIP_NOTFOUND` (optional, an override)
+    - The id of the membership check not found twilio template.
 - `PAYPAL_SANDBOX` (optional, for testing)
 - `RUST_BACKTRACE` (optional, for backtraces)
 

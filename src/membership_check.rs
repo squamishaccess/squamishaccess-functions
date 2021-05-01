@@ -1,16 +1,28 @@
-use http_types::auth::BasicAuth;
+use http_types::auth::{AuthenticationScheme, Authorization, BasicAuth};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use tide::{Response, StatusCode};
 
 // The info! logging macro comes from crate::azure_function::logger
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
 use crate::AppRequest;
 
+#[derive(Debug, Serialize)]
+struct MailchimpQuery {
+    fields: &'static [&'static str],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct McMergeFields {
+    first_name: String,
+    expires: String,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct MailchimpResponse {
     status: String,
     email_address: String,
+    merge_fields: McMergeFields,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,11 +55,16 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
     let hash = md5::compute(&email.to_lowercase());
     let authz = BasicAuth::new("any", &state.mc_api_key);
 
+    let mc_query = MailchimpQuery {
+        fields: &["FNAME", "EXPIRES"],
+    };
+
     // Attempt to fetch the member to our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp
         .get(&mc_path)
+        .query(&mc_query)?
         .header(authz.name(), authz.value())
         .await?;
 
@@ -62,70 +79,84 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
             };
 
             let body = json!({
-                "key": state.mandrill_key,
-                "template_name": state.template_membership_check,
-                "template_content": [],
-                "message": {
+                "personalizations": [{
                     "to": [{
                         "email": mc_json.email_address
-                    }]
+                    }],
+                    "substitutions": {
+                        "%FNAME%": mc_json.merge_fields.first_name,
+                        "%EXPIRES%": mc_json.merge_fields.expires,
+                        "%STATUS%": membership,
+                    },
+                }],
+                "from": {
+                    "email": "info@squamishaccess.ca"
                 },
-                "global_merge_vars": [{
-                    "name": "STATUS",
-                    "content": membership,
-                }]
+                "to": [{
+                    "email": mc_json.email_address
+                }],
+                "template_id": state.template_membership_check,
             });
 
-            let mandrill_path = format!("api/1.0/messages/send-template");
-            let mut mandrill_res = state.mandrill.post(&mandrill_path).body(body).await?;
-            let status = mandrill_res.status();
+            let authz =
+                Authorization::new(AuthenticationScheme::Bearer, state.twilio_api_key.clone());
 
-            let res_body = mandrill_res.body_string().await?;
-            info!(logger, "Mandrill response: {}", res_body);
+            let mut twilio_res = state
+                .twilio
+                .post("v3/mail/send")
+                .header(authz.name(), authz.value())
+                .body(body)
+                .await?;
+            let status = twilio_res.status();
 
-            let res_body: Value = serde_json::from_str(&res_body)?;
-            if res_body.pointer("0/reject_reason").is_some() {
-                Ok(StatusCode::BadRequest.into())
-            } else if status.is_client_error() || status.is_server_error() {
-                Ok(StatusCode::InternalServerError.into())
+            let res_body = twilio_res.body_string().await?;
+            info!(logger, "Twilio response: {}", res_body);
+
+            if status == StatusCode::Accepted {
+                Ok(StatusCode::Accepted.into())
             } else {
-                Ok(StatusCode::Ok.into())
+                Ok(StatusCode::InternalServerError.into())
             }
         }
         StatusCode::NotFound => {
             info!(logger, "No such member: {}", email);
 
             let body = json!({
-                "key": state.mandrill_key,
-                "template_name": state.template_membership_notfound,
-                "template_content": [],
-                "message": {
+                "personalizations": [{
                     "to": [{
                         "email": email
-                    }]
+                    }],
+                }],
+                "from": {
+                    "email": "info@squamishaccess.ca"
                 },
+                "to": [{
+                    "email": email
+                }],
+                "template_id": state.template_membership_notfound,
             });
 
-            let mandrill_path = format!("api/1.0/messages/send-template");
-            let mut mandrill_res = state.mandrill.post(&mandrill_path).body(body).await?;
-            let status = mandrill_res.status();
+            let mut twilio_res = state
+                .twilio
+                .post("v3/mail/send")
+                .header(authz.name(), authz.value())
+                .body(body)
+                .await?;
+            let status = twilio_res.status();
 
-            let res_body = mandrill_res.body_string().await?;
-            info!(logger, "Mandrill response: {}", res_body);
+            let res_body = twilio_res.body_string().await?;
+            info!(logger, "Twilio response: {}", res_body);
 
-            let res_body: Value = serde_json::from_str(&res_body)?;
-            if res_body.pointer("0/reject_reason").is_some() {
-                Ok(StatusCode::BadRequest.into())
-            } else if status.is_client_error() || status.is_server_error() {
-                Ok(StatusCode::InternalServerError.into())
+            if status == StatusCode::Accepted {
+                Ok(StatusCode::Accepted.into())
             } else {
-                Ok(StatusCode::Ok.into())
+                Ok(StatusCode::InternalServerError.into())
             }
         }
         s if s.is_client_error() => {
             info!(
                 logger,
-                "Mailchimp (mandrill) client error: {} - {}",
+                "Mailchimp client error: {} - {}",
                 s,
                 mailchimp_res.body_string().await?
             );
@@ -137,7 +168,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
             // Something else?
             info!(
                 logger,
-                "Mailchimp (mandrill) unknown status: {} - {}",
+                "Mailchimp unknown status: {} - {}",
                 s,
                 mailchimp_res.body_string().await?
             );
