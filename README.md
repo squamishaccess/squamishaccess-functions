@@ -38,7 +38,7 @@ Currently only set up to deploy to a windows environment.
 Must be built with a `x86_64-pc-windows` Rust toolchain.
 
 - `cargo build --release`
-- `cp target\release\squamishaccess-functions.exe bin/squamishaccess-functions.exe`
+- `cp target\release\squamishaccess-functions.exe bin\squamishaccess-functions.exe`
 - deploy via Azure Core Tools v3 / VS Code extension
 
 ## License
