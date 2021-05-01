@@ -84,12 +84,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "personalizations": [{
                     "to": [{
                         "email": mc_json.email_address
-                    }],
-                    "substitutions": {
-                        "%FNAME%": mc_json.merge_fields.first_name,
-                        "%EXPIRES%": mc_json.merge_fields.expires,
-                        "%STATUS%": membership,
-                    },
+                    }]
                 }],
                 "from": {
                     "email": "info@squamishaccess.ca"
@@ -98,6 +93,11 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                     "email": mc_json.email_address
                 }],
                 "template_id": state.template_membership_check,
+                "dynamic_template_data": {
+                    "first_name": mc_json.merge_fields.first_name,
+                    "expires": mc_json.merge_fields.expires,
+                    "status": membership
+                }
             });
 
             let authz =
@@ -127,7 +127,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "personalizations": [{
                     "to": [{
                         "email": email
-                    }],
+                    }]
                 }],
                 "from": {
                     "email": "info@squamishaccess.ca"
@@ -135,7 +135,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "to": [{
                     "email": email
                 }],
-                "template_id": state.template_membership_notfound,
+                "template_id": state.template_membership_notfound
             });
 
             let mut twilio_res = state
