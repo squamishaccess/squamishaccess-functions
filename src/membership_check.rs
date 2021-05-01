@@ -85,7 +85,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                     }]
                 }],
                 "from": {
-                    "email": "info@squamishaccess.ca"
+                    "email": "noreply@squamishaccess.ca"
                 },
                 "to": [{
                     "email": mc_json.email_address
@@ -122,7 +122,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                     }]
                 }],
                 "from": {
-                    "email": "info@squamishaccess.ca"
+                    "email": "noreply@squamishaccess.ca"
                 },
                 "to": [{
                     "email": email
