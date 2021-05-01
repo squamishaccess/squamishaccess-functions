@@ -1,7 +1,6 @@
 use chrono::prelude::*;
 use chrono::Duration;
 use chrono::SecondsFormat::Secs;
-use http_types::auth::BasicAuth;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tide::http::Method;
@@ -196,14 +195,13 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
 
     // The MailChimp api is a bit strange.
     let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
-    let authz = BasicAuth::new("any", &state.mc_api_key);
 
     // Check if the person is already in our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp
         .get(&mc_path)
-        .header(authz.name(), authz.value())
+        .header(state.mc_auth.name(), state.mc_auth.value())
         .await?;
 
     if mailchimp_res.status().is_server_error() {
@@ -254,7 +252,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let mut mailchimp_res = state
         .mailchimp
         .put(&mc_path)
-        .header(authz.name(), authz.value())
+        .header(state.mc_auth.name(), state.mc_auth.value())
         .body(Body::from_json(&mc_req)?)
         .await?;
 

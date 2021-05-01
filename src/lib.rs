@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 
+use http_types::auth::{Authorization, BasicAuth};
 use log::warn;
 use surf::Client;
 use tide::{Request, Response, Server, StatusCode};
@@ -27,14 +28,14 @@ use membership_check::membership_check;
 #[derive(Debug)]
 pub struct AppState {
     pub mailchimp: Client,
-    pub mc_api_key: String,
+    pub mc_auth: BasicAuth,
     pub mc_list_id: String,
     pub paypal: Client,
     pub paypal_sandbox: bool,
     pub template_membership_check: String, // twilio email template id
     pub template_membership_notfound: String, // twilio email template id
     pub twilio: Client,                    // Email sending
-    pub twilio_api_key: String,
+    pub twilio_auth: Authorization,
 }
 
 pub type AppRequest = Request<Arc<AppState>>;

@@ -12,6 +12,7 @@ use std::env;
 use std::sync::Arc;
 
 use color_eyre::eyre::Result;
+use http_types::auth::{AuthenticationScheme, Authorization, BasicAuth};
 use log::{info, warn};
 use surf::Url;
 
@@ -44,9 +45,11 @@ async fn main() -> Result<()> {
             .nth(1)
             .expect("Requires a valid, full mailchimp api key")
     ))?;
+    let mc_auth = BasicAuth::new("any", mc_api_key);
 
     // Twilio (email sends)
     let twilio_api_key = env::var("TWILIO_API_KEY").expect("TWILIO_API_KEY is required.");
+    let twilio_auth = Authorization::new(AuthenticationScheme::Bearer, twilio_api_key);
 
     // Twilio email templates
     let template_membership_check =
@@ -76,14 +79,14 @@ async fn main() -> Result<()> {
     // This is set behind an atomic reference counted pointer.
     let state = AppState {
         mailchimp,
-        mc_api_key,
+        mc_auth,
         mc_list_id,
         paypal,
         paypal_sandbox,
         template_membership_check,
         template_membership_notfound,
         twilio,
-        twilio_api_key,
+        twilio_auth,
     };
 
     let mut server = tide::with_state(Arc::new(state));

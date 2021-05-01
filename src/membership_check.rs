@@ -1,4 +1,3 @@
-use http_types::auth::{AuthenticationScheme, Authorization, BasicAuth};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tide::{Response, StatusCode};
@@ -55,7 +54,6 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
 
     // The MailChimp api is a bit strange.
     let hash = md5::compute(&email.to_lowercase());
-    let authz = BasicAuth::new("any", &state.mc_api_key);
 
     let mc_query = MailchimpQuery {
         fields: &["FNAME", "EXPIRES"],
@@ -67,7 +65,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
         .mailchimp
         .get(&mc_path)
         .query(&mc_query)?
-        .header(authz.name(), authz.value())
+        .header(state.mc_auth.name(), state.mc_auth.value())
         .await?;
 
     match mailchimp_res.status() {
@@ -100,13 +98,10 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 }
             });
 
-            let authz =
-                Authorization::new(AuthenticationScheme::Bearer, state.twilio_api_key.clone());
-
             let mut twilio_res = state
                 .twilio
                 .post("v3/mail/send")
-                .header(authz.name(), authz.value())
+                .header(state.twilio_auth.name(), state.twilio_auth.value())
                 .body(body)
                 .await?;
 
@@ -135,13 +130,10 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "template_id": state.template_membership_notfound
             });
 
-            let authz =
-                Authorization::new(AuthenticationScheme::Bearer, state.twilio_api_key.clone());
-
             let mut twilio_res = state
                 .twilio
                 .post("v3/mail/send")
-                .header(authz.name(), authz.value())
+                .header(state.twilio_auth.name(), state.twilio_auth.value())
                 .body(body)
                 .await?;
 
