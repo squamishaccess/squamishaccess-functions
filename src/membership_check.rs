@@ -14,7 +14,9 @@ struct MailchimpQuery {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct McMergeFields {
+    #[serde(rename = "FNAME")]
     first_name: String,
+    #[serde(rename = "EXPIRES")]
     expires: String,
 }
 
