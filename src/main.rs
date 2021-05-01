@@ -50,9 +50,9 @@ async fn main() -> Result<()> {
 
     // Twilio email templates
     let template_membership_check =
-        env::var("TEMPLATE_MEMBERSHIP_CHECK").unwrap_or_else(|_| "membership-check".to_string());
+        env::var("TEMPLATE_MEMBERSHIP_CHECK").expect("TEMPLATE_MEMBERSHIP_CHECK is required.");
     let template_membership_notfound = env::var("TEMPLATE_MEMBERSHIP_NOTFOUND")
-        .unwrap_or_else(|_| "membership-notfound".to_string());
+        .expect("TEMPLATE_MEMBERSHIP_NOTFOUND is required.");
 
     // PayPal
     let paypal_sandbox = env::var("PAYPAL_SANDBOX").is_ok();

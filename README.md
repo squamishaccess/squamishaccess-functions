@@ -25,10 +25,10 @@ The following environment variables are accepted (or in `.env`):
 - `MAILCHIMP_API_KEY` (required)
 - `MAILCHIMP_LIST_ID` (required)
 - `TWILIO_API_KEY` (required)
-- `TEMPLATE_MEMBERSHIP_CHECK` (optional, an override)
-    - The id of the membership check twilio template.
-- `TEMPLATE_MEMBERSHIP_NOTFOUND` (optional, an override)
-    - The id of the membership check not found twilio template.
+- `TEMPLATE_MEMBERSHIP_CHECK` (required)
+    - The id of the membership check twilio email template.
+- `TEMPLATE_MEMBERSHIP_NOTFOUND` (required)
+    - The id of the membership not found twilio email template.
 - `PAYPAL_SANDBOX` (optional, for testing)
 - `RUST_BACKTRACE` (optional, for backtraces)
 
