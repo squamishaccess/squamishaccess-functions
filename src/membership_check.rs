@@ -43,7 +43,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
         email: String,
     }
 
-    let Incoming { email } = req.body_json().await?;
+    let Incoming { email } = req.body_form().await?;
 
     info!(logger, "Membership check - Email: {}", email);
 
