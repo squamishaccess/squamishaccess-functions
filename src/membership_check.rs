@@ -47,7 +47,9 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
     let Incoming { email } = req.body_form().await?;
 
     if email.is_empty() {
-        return Ok(StatusCode::BadRequest.into());
+        let mut res: Response = StatusCode::SeeOther.into();
+        res.insert_header(LOCATION, "https://squamishaccess.ca/membership");
+        return Ok(res);
     }
 
     info!(logger, "Membership check - Email: {}", email);
