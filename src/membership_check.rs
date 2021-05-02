@@ -1,3 +1,4 @@
+use http_types::headers::LOCATION;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tide::{Response, StatusCode};
@@ -106,7 +107,12 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 .await?;
 
             if twilio_res.status() == StatusCode::Accepted {
-                Ok(StatusCode::Accepted.into())
+                let mut res: Response = StatusCode::SeeOther.into();
+                res.insert_header(
+                    LOCATION,
+                    "https://squamishaccess.ca/membership-check-response",
+                );
+                Ok(res)
             } else {
                 info!(logger, "Twilio error: {}", twilio_res.body_string().await?);
                 Ok(StatusCode::InternalServerError.into())
@@ -138,7 +144,12 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 .await?;
 
             if twilio_res.status() == StatusCode::Accepted {
-                Ok(StatusCode::Accepted.into())
+                let mut res: Response = StatusCode::SeeOther.into();
+                res.insert_header(
+                    LOCATION,
+                    "https://squamishaccess.ca/membership-check-response",
+                );
+                Ok(res)
             } else {
                 info!(logger, "Twilio error: {}", twilio_res.body_string().await?);
                 Ok(StatusCode::InternalServerError.into())

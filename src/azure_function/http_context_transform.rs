@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
+use http_types::headers::LOCATION;
 use serde_json::{json, Value};
 use tide::http::headers::CONTENT_TYPE;
 use tide::{Body, Middleware, Next, Request, Result, StatusCode};
@@ -94,11 +95,13 @@ impl AzureFnMiddleware {
         let mut res = next.run(req).await; // Continue middleware stack.
 
         let logger = Arc::try_unwrap(logger).unwrap();
-        let out = json!({
+        let mut out = json!({
             "Outputs": {
                 "res": {
                     // The external response status code.
                     "statusCode": res.status(),
+                    // Headers ...
+                    "headers": {},
                     // Encapsulate the external response.
                     "body": res.take_body().into_string().await?
                 }
@@ -106,6 +109,14 @@ impl AzureFnMiddleware {
             // This is currently the only way to log from a custom handler.
             "Logs": logger.into_inner().logs,
         });
+
+        if let Some(location) = res.header(LOCATION) {
+            out.pointer_mut("/Outputs/res/headers")
+                .expect("statically set json - path to headers")
+                .as_object_mut()
+                .expect("statically set json - headers as object")
+                .insert(LOCATION.as_str().to_owned(), Value::String(location.last().to_string()));
+        }
 
         res.set_body(Body::from_json(&out)?);
         res.remove_header(CONTENT_TYPE);
