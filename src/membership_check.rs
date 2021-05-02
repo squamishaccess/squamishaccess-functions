@@ -46,6 +46,10 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
 
     let Incoming { email } = req.body_form().await?;
 
+    if email.is_empty() {
+        return Ok(StatusCode::BadRequest.into());
+    }
+
     info!(logger, "Membership check - Email: {}", email);
 
     // Must be done after we take the main request body.
