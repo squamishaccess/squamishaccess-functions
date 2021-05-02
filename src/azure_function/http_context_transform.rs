@@ -115,7 +115,10 @@ impl AzureFnMiddleware {
                 .expect("statically set json - path to headers")
                 .as_object_mut()
                 .expect("statically set json - headers as object")
-                .insert(LOCATION.as_str().to_owned(), Value::String(location.last().to_string()));
+                .insert(
+                    LOCATION.as_str().to_owned(),
+                    Value::String(location.last().to_string()),
+                );
         }
 
         res.set_body(Body::from_json(&out)?);
