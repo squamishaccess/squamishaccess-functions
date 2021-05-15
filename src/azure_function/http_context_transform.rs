@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_std::sync::RwLock;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use tide::http::headers::CONTENT_TYPE;
 use tide::{Body, Middleware, Next, Request, Result, StatusCode};
 
@@ -94,29 +94,10 @@ impl AzureFnMiddleware {
         let mut res = next.run(req).await; // Continue middleware stack.
 
         let logger = Arc::try_unwrap(logger).unwrap();
-        
-        let mut out = json!({
-            "Outputs": {
-                "res": {
-                    // The external response status code.
-                    "statusCode": res.status(),
-                    // Headers ...
-                    "headers": {},
-                    // Encapsulate the external response.
-                    "body": res.take_body().into_string().await?
-                }
-            },
-            // This is currently the only way to log from a custom handler.
-            "Logs": logger.into_inner().logs,
-        });
 
-        let headers_obj = out
-            .pointer_mut("/Outputs/res/headers")
-            .expect("statically set json - path to headers")
-            .as_object_mut()
-            .expect("statically set json - headers as object");
-        for (name, values) in res.iter() {
-            headers_obj.insert(
+        // Transform our headers into an iterator of JSON key/value pairs, and then construct a JSON object from it.
+        let headers_iter = res.iter().map(|(name, values)| {
+            (
                 name.as_str().to_owned(),
                 Value::String(
                     values
@@ -125,8 +106,23 @@ impl AzureFnMiddleware {
                         .collect::<Vec<_>>()
                         .join(", "),
                 ),
-            );
-        }
+            )
+        });
+
+        let out = json!({
+            "Outputs": {
+                "res": {
+                    // The external response status code.
+                    "statusCode": res.status(),
+                    // Headers, now constructing the JSON object from the iterator.
+                    "headers": headers_iter.collect::<Map<_, _>>(),
+                    // Encapsulate the external response.
+                    "body": res.take_body().into_string().await?
+                }
+            },
+            // This is currently the only way to log from a custom handler.
+            "Logs": logger.into_inner().logs,
+        });
 
         res.set_body(Body::from_json(&out)?);
         res.remove_header(CONTENT_TYPE);
