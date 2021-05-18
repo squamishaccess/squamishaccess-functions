@@ -8,13 +8,15 @@
 #![doc(test(attr(deny(rust_2018_idioms, warnings))))]
 #![doc(test(attr(allow(unused_extern_crates, unused_variables))))]
 
+use std::convert::TryFrom;
 use std::env;
 use std::sync::Arc;
 
 use color_eyre::eyre::Result;
+use http_client::{Config, h1::H1Client};
 use http_types::auth::{AuthenticationScheme, Authorization, BasicAuth};
 use log::{info, warn};
-use surf::Url;
+use surf::{Client, Url};
 
 use lib::azure_function::{AzureFnLogMiddleware, AzureFnMiddleware};
 use lib::AppState;
@@ -67,12 +69,13 @@ async fn main() -> Result<()> {
         paypal_base_url = Url::parse("https://ipnpb.paypal.com/")?;
     };
 
-    // Set up re-useable api clients for efficiency, connection pooling, ergonomics.
-    let mut mailchimp = surf::client();
+    // Set up re-useable api clients for efficiency & ergonomics.
+    let client_config = Config::new().set_http_keep_alive(false);
+    let mut mailchimp = Client::with_http_client(H1Client::try_from(client_config.clone())?);
     mailchimp.set_base_url(mc_base_url);
-    let mut twilio = surf::client();
+    let mut twilio =  Client::with_http_client(H1Client::try_from(client_config.clone())?);
     twilio.set_base_url(Url::parse("https://api.sendgrid.com/")?);
-    let mut paypal = surf::client();
+    let mut paypal =  Client::with_http_client(H1Client::try_from(client_config)?);
     paypal.set_base_url(paypal_base_url);
 
     // Application shared state.
