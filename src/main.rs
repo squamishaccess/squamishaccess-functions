@@ -13,7 +13,7 @@ use std::env;
 use std::sync::Arc;
 
 use color_eyre::eyre::Result;
-use http_client::{Config, h1::H1Client};
+use http_client::{h1::H1Client, Config};
 use http_types::auth::{AuthenticationScheme, Authorization, BasicAuth};
 use log::{info, warn};
 use surf::{Client, Url};
@@ -73,9 +73,9 @@ async fn main() -> Result<()> {
     let client_config = Config::new().set_http_keep_alive(false);
     let mut mailchimp = Client::with_http_client(H1Client::try_from(client_config.clone())?);
     mailchimp.set_base_url(mc_base_url);
-    let mut twilio =  Client::with_http_client(H1Client::try_from(client_config.clone())?);
+    let mut twilio = Client::with_http_client(H1Client::try_from(client_config.clone())?);
     twilio.set_base_url(Url::parse("https://api.sendgrid.com/")?);
-    let mut paypal =  Client::with_http_client(H1Client::try_from(client_config)?);
+    let mut paypal = Client::with_http_client(H1Client::try_from(client_config)?);
     paypal.set_base_url(paypal_base_url);
 
     // Application shared state.
