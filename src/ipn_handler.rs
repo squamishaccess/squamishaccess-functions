@@ -189,7 +189,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
 
     let payment_amount: f64 = ipn_transaction_message.mc_gross.parse()?;
     if payment_amount < 10.0 {
-        info!(logger, "Refusing membership, payment amount to low.",);
+        info!(logger, "Refusing membership, payment amount too low.",);
         return Ok(StatusCode::Ok.into());
     }
 
