@@ -158,22 +158,18 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             .txn_type
             .as_deref()
             .unwrap_or("(missing txn_type)"),
-        ipn_transaction_message.mc_currency,
         ipn_transaction_message.mc_gross,
+        ipn_transaction_message.mc_currency,
         ipn_transaction_message
             .exchange_rate
             .as_deref()
             .unwrap_or("(none)"),
     );
 
-    // PayPal buttons - the SAS sign-up link - is a "web_accept".
-    //
-    // For anyone who's set up any sort of recurring payment we'll also subscribe them too. Why not.
+    // PayPal buttons - we accept yearly subscriptions ("subscr_payment") and one-off yearly payments ("web-accept").
     match ipn_transaction_message.txn_type.as_deref() {
-        Some("web_accept") => (),        // Ok
-        Some("subscr_payment") => (),    // TODO: check amount
-        Some("send_money") => (),        // TODO: check amount
-        Some("recurring_payment") => (), // TODO: check amount
+        Some("web_accept") => (),     // Ok
+        Some("subscr_payment") => (), // Ok
         Some(txn_type) => {
             return Err(tide::Error::from_str(
                 StatusCode::Ok, // Don't want PayPal to retry.
@@ -189,6 +185,12 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
                 ),
             ));
         }
+    }
+
+    let payment_amount: f64 = ipn_transaction_message.mc_gross.parse()?;
+    if payment_amount < 10.0 {
+        info!(logger, "Refusing membership, payment amount to low.",);
+        return Ok(StatusCode::Ok.into());
     }
 
     info!(logger, "Email: {}", ipn_transaction_message.payer_email);
@@ -233,7 +235,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     };
 
     let utc_now: DateTime<Utc> = Utc::now();
-    let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365 * 5 + 1);
+    let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365);
 
     // Set up the new member's MailChimp information.
     let mc_req = json!({
