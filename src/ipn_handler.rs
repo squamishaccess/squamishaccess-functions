@@ -108,7 +108,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         }
     };
 
-    // PayPal buttons - we accept yearly subscriptions ("subscr_payment") and one-off yearly payments ("web-accept").
+    // PayPal buttons - we accept yearly subscriptions ("subscr_payment") and one-off yearly payments ("web_accept").
     match txn_type.as_deref() {
         Some("web_accept") => (),     // Ok
         Some("subscr_payment") => (), // Ok
