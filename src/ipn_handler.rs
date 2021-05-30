@@ -1,14 +1,14 @@
 use chrono::prelude::*;
 use chrono::Duration;
 use chrono::SecondsFormat::Secs;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use tide::http::Method;
 use tide::{Body, Response, StatusCode};
 
 // The info! logging macro comes from crate::azure_function::logger
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
-use crate::AppRequest;
+use crate::{AppRequest, MailchimpQuery, MailchimpResponse};
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Deserialize)]
@@ -29,17 +29,6 @@ struct IPNTransationMessage {
 #[derive(Debug, Deserialize)]
 struct IPNMessageTypeOnly {
     txn_type: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct MailchimpResponse {
-    status: String,
-    email_address: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct MailchimpErrorResponse {
-    title: String,
 }
 
 /// Handle a PayPal Instant Payment Notification (IPN) and attempt to subscribe to MailChimp.
@@ -215,11 +204,16 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     // The MailChimp api is a bit strange.
     let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
 
+    let mc_query = MailchimpQuery {
+        fields: &["EXPIRES"],
+    };
+
     // Check if the person is already in our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
     let mut mailchimp_res = state
         .mailchimp
         .get(&mc_path)
+        .query(&mc_query)?
         .header(state.mc_auth.name(), state.mc_auth.value())
         .await?;
 
@@ -232,10 +226,13 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         ));
     }
 
+    let utc_now: DateTime<Utc> = Utc::now();
+    let mut utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365);
+
     let status;
     if mailchimp_res.status().is_client_error() {
         // If the person is not in our list, set them as pending to give them an opportunity to properly accept if they want an email subscription.
-        status = "pending"
+        status = "pending";
     } else {
         let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
         info!(
@@ -248,11 +245,19 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             "unsubscribed" => return Ok(StatusCode::Ok.into()),
             "subscribed" => "subscribed",
             _ => "pending",
+        };
+
+        let existing_expire =
+            NaiveDateTime::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")?;
+        let existing_expire = DateTime::from_utc(existing_expire, Utc);
+        if existing_expire > utc_expires {
+            info!(
+                logger,
+                "existing EXPIRES is beyond one year, using it: {}", mc_json.merge_fields.expires
+            );
+            utc_expires = existing_expire;
         }
     };
-
-    let utc_now: DateTime<Utc> = Utc::now();
-    let utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365);
 
     // Set up the new member's MailChimp information.
     let mc_req = json!({

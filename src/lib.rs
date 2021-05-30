@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use http_types::auth::{Authorization, BasicAuth};
 use log::warn;
+use serde::{Deserialize, Serialize};
 use surf::Client;
 use tide::{Request, Response, Server, StatusCode};
 
@@ -53,4 +54,29 @@ pub fn setup_routes(server: &mut Server<Arc<AppState>>) {
 
     // The Membership Check handler, set the path where it's `function.json` sits in the project.
     server.at("/Membership-Check").post(membership_check);
+}
+
+#[derive(Debug, Serialize)]
+struct MailchimpQuery {
+    fields: &'static [&'static str],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct McMergeFields {
+    #[serde(rename = "FNAME")]
+    first_name: String,
+    #[serde(rename = "EXPIRES")]
+    expires: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct MailchimpResponse {
+    status: String,
+    email_address: String,
+    merge_fields: McMergeFields,
+}
+
+#[derive(Debug, Deserialize)]
+struct MailchimpErrorResponse {
+    title: String,
 }

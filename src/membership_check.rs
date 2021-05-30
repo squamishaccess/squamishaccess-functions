@@ -1,36 +1,11 @@
 use http_types::headers::LOCATION;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use tide::{Response, StatusCode};
 
 // The info! logging macro comes from crate::azure_function::logger
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
-use crate::AppRequest;
-
-#[derive(Debug, Serialize)]
-struct MailchimpQuery {
-    fields: &'static [&'static str],
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct McMergeFields {
-    #[serde(rename = "FNAME")]
-    first_name: String,
-    #[serde(rename = "EXPIRES")]
-    expires: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct MailchimpResponse {
-    status: String,
-    email_address: String,
-    merge_fields: McMergeFields,
-}
-
-#[derive(Debug, Deserialize)]
-struct MailchimpErrorResponse {
-    title: String,
-}
+use crate::{AppRequest, MailchimpQuery, MailchimpResponse};
 
 /// Check if an email is in MailChimp & when it's expiry date is, if available.
 pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
