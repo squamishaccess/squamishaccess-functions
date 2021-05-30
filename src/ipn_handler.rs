@@ -14,7 +14,7 @@ use crate::AppRequest;
 #[derive(Debug, Deserialize)]
 struct IPNTransationMessage {
     txn_id: String,
-    txn_type: Option<String>,
+    txn_type: String,
     payment_status: String,
     payer_email: String,
     first_name: String,
@@ -23,6 +23,12 @@ struct IPNTransationMessage {
     mc_gross: String,
     exchange_rate: Option<String>,
     payment_date: Option<String>,
+}
+
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Debug, Deserialize)]
+struct IPNMessageTypeOnly {
+    txn_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -86,6 +92,41 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
                 verify_response.status()
             ),
         ));
+    }
+
+    // Check just the `txn_type` of the IPN message.
+    let txn_type = match serde_qs::from_str::<IPNMessageTypeOnly>(&ipn_transaction_message_raw) {
+        Ok(msg) => msg.txn_type,
+        Err(error) => {
+            return Err(tide::Error::from_str(
+                StatusCode::InternalServerError,
+                format!(
+                    "Invalid IPN: unparseable IPN: \"{}\" - error: {}",
+                    ipn_transaction_message_raw, error
+                ),
+            ));
+        }
+    };
+
+    // PayPal buttons - we accept yearly subscriptions ("subscr_payment") and one-off yearly payments ("web-accept").
+    match txn_type.as_deref() {
+        Some("web_accept") => (),     // Ok
+        Some("subscr_payment") => (), // Ok
+        Some(txn_type) => {
+            return Err(tide::Error::from_str(
+                StatusCode::Ok, // Don't want PayPal to retry.
+                format!("IPN: txn_type was not acceptable: {}", txn_type),
+            ));
+        }
+        None => {
+            return Err(tide::Error::from_str(
+                StatusCode::Ok, // Don't want PayPal to retry.
+                format!(
+                    "IPN: no transaction type. IPN: \"{}\"",
+                    ipn_transaction_message_raw
+                ),
+            ));
+        }
     }
 
     // Attempt to deserialize the IPN message.
@@ -154,10 +195,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     info!(
         logger,
         "IPN: type: \"{}\" - gross amount: {} - currency: {} - exchange rate: {}",
-        ipn_transaction_message
-            .txn_type
-            .as_deref()
-            .unwrap_or("(missing txn_type)"),
+        ipn_transaction_message.txn_type,
         ipn_transaction_message.mc_gross,
         ipn_transaction_message.mc_currency,
         ipn_transaction_message
@@ -165,27 +203,6 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             .as_deref()
             .unwrap_or("(none)"),
     );
-
-    // PayPal buttons - we accept yearly subscriptions ("subscr_payment") and one-off yearly payments ("web-accept").
-    match ipn_transaction_message.txn_type.as_deref() {
-        Some("web_accept") => (),     // Ok
-        Some("subscr_payment") => (), // Ok
-        Some(txn_type) => {
-            return Err(tide::Error::from_str(
-                StatusCode::Ok, // Don't want PayPal to retry.
-                format!("IPN: txn_type was not acceptable: {}", txn_type),
-            ));
-        }
-        None => {
-            return Err(tide::Error::from_str(
-                StatusCode::Ok, // Don't want PayPal to retry.
-                format!(
-                    "IPN: no transaction type. IPN: \"{}\"",
-                    ipn_transaction_message_raw
-                ),
-            ));
-        }
-    }
 
     let payment_amount: f64 = ipn_transaction_message.mc_gross.parse()?;
     if payment_amount < 10.0 {
