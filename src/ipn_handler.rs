@@ -242,7 +242,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         );
         status = match mc_json.status.as_str() {
             // Don't re-subscribe someone who has unsubscribed from our emails. They will still be a list member regardless.
-            "unsubscribed" => return Ok(StatusCode::Ok.into()),
+            "unsubscribed" => "unsubscribed",
             "subscribed" => "subscribed",
             _ => "pending",
         };
