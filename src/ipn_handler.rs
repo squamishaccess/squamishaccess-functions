@@ -247,8 +247,9 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             _ => "pending",
         };
 
-        let existing_expire =
-            NaiveDateTime::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")?;
+        let existing_expire_day =
+            NaiveDate::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")?;
+        let existing_expire = existing_expire_day.and_hms(12, 0, 0);
         let existing_expire = DateTime::from_utc(existing_expire, Utc);
         if existing_expire > utc_expires {
             info!(
