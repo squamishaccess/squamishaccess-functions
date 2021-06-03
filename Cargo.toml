@@ -26,7 +26,6 @@ version = "0.4"
 features = ["serde"]
 
 [dependencies.http-client]
-# Pin to a version of http-client before connection pooling, as that feature may be causing timed out sockets to be reused.
 version = "6.4.0"
 default-features = false
 # (6.3.0+) # Fix http-client's features for the h1 client even though we do not depend on it directly.
