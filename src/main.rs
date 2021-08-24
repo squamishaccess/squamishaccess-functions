@@ -9,15 +9,14 @@
 #![doc(test(attr(deny(rust_2018_idioms, warnings))))]
 #![doc(test(attr(allow(unused_extern_crates, unused_variables))))]
 
-use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::env;
 use std::sync::Arc;
 
 use color_eyre::eyre::Result;
-use http_client::{h1::H1Client, Config};
 use http_types::auth::{AuthenticationScheme, Authorization, BasicAuth};
 use log::{info, warn};
-use surf::{Client, Url};
+use surf::{Client, Config, Url};
 
 use lib::azure_function::{AzureFnLogMiddleware, AzureFnMiddleware};
 use lib::AppState;
@@ -72,25 +71,30 @@ async fn main() -> Result<()> {
 
     // Set up re-useable api clients for efficiency & ergonomics.
     let client_config = Config::new().set_http_keep_alive(false);
-    let mut mailchimp = Client::with_http_client(H1Client::try_from(client_config.clone())?);
-    mailchimp.set_base_url(mc_base_url);
-    let mut twilio = Client::with_http_client(H1Client::try_from(client_config.clone())?);
-    twilio.set_base_url(Url::parse("https://api.sendgrid.com/")?);
-    let mut paypal = Client::with_http_client(H1Client::try_from(client_config)?);
-    paypal.set_base_url(paypal_base_url);
+    let mailchimp: Client = client_config
+        .clone()
+        .set_base_url(mc_base_url)
+        .add_header(mc_auth.name(), mc_auth.value())
+        .unwrap()
+        .try_into()?;
+    let twilio: Client = client_config
+        .clone()
+        .set_base_url(Url::parse("https://api.sendgrid.com/")?)
+        .add_header(twilio_auth.name(), twilio_auth.value())
+        .unwrap()
+        .try_into()?;
+    let paypal: Client = client_config.set_base_url(paypal_base_url).try_into()?;
 
     // Application shared state.
     // This is set behind an atomic reference counted pointer.
     let state = AppState {
         mailchimp,
-        mc_auth,
         mc_list_id,
         paypal,
         paypal_sandbox,
         template_membership_check,
         template_membership_notfound,
         twilio,
-        twilio_auth,
     };
 
     let mut server = tide::with_state(Arc::new(state));

@@ -43,12 +43,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
 
     // Attempt to fetch the member to our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
-    let mut mailchimp_res = state
-        .mailchimp
-        .get(&mc_path)
-        .query(&mc_query)?
-        .header(state.mc_auth.name(), state.mc_auth.value())
-        .await?;
+    let mut mailchimp_res = state.mailchimp.get(&mc_path).query(&mc_query)?.await?;
 
     match mailchimp_res.status() {
         StatusCode::Ok => {
@@ -80,12 +75,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "template_id": state.template_membership_check
             });
 
-            let mut twilio_res = state
-                .twilio
-                .post("v3/mail/send")
-                .header(state.twilio_auth.name(), state.twilio_auth.value())
-                .body(body)
-                .await?;
+            let mut twilio_res = state.twilio.post("v3/mail/send").body(body).await?;
 
             if twilio_res.status() == StatusCode::Accepted {
                 let mut res: Response = StatusCode::SeeOther.into();
@@ -117,12 +107,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
                 "template_id": state.template_membership_notfound
             });
 
-            let mut twilio_res = state
-                .twilio
-                .post("v3/mail/send")
-                .header(state.twilio_auth.name(), state.twilio_auth.value())
-                .body(body)
-                .await?;
+            let mut twilio_res = state.twilio.post("v3/mail/send").body(body).await?;
 
             if twilio_res.status() == StatusCode::Accepted {
                 let mut res: Response = StatusCode::SeeOther.into();

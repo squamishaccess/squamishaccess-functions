@@ -210,12 +210,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
 
     // Check if the person is already in our MailChimp list.
     let mc_path = format!("3.0/lists/{}/members/{:x}", state.mc_list_id, hash);
-    let mut mailchimp_res = state
-        .mailchimp
-        .get(&mc_path)
-        .query(&mc_query)?
-        .header(state.mc_auth.name(), state.mc_auth.value())
-        .await?;
+    let mut mailchimp_res = state.mailchimp.get(&mc_path).query(&mc_query)?.await?;
 
     if mailchimp_res.status().is_server_error() {
         let error_body = mailchimp_res.body_string().await?;
@@ -287,7 +282,6 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let mut mailchimp_res = state
         .mailchimp
         .put(&mc_path)
-        .header(state.mc_auth.name(), state.mc_auth.value())
         .body(Body::from_json(&mc_req)?)
         .await?;
 
