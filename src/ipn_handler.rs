@@ -247,16 +247,26 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             _ => "pending",
         };
 
-        let existing_expire_day =
-            NaiveDate::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")?;
-        let existing_expire = existing_expire_day.and_hms(12, 0, 0);
-        let existing_expire = DateTime::from_utc(existing_expire, Utc);
-        if existing_expire > utc_expires {
+        // Pick up an existing date if one exists and if we can parse it.
+        if let Ok(existing_expire_day) =
+            NaiveDate::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")
+        {
+            let existing_expire = existing_expire_day.and_hms(12, 0, 0);
+            let existing_expire = DateTime::from_utc(existing_expire, Utc);
+            if existing_expire > utc_expires {
+                info!(
+                    logger,
+                    "existing EXPIRES is beyond one year, using it: {}",
+                    mc_json.merge_fields.expires
+                );
+                utc_expires = existing_expire;
+            }
+        } else {
+            // Weird, we couldn't parse the date. Maybe it was blank in mailchimp? (Some old members had blank fields.)
             info!(
                 logger,
-                "existing EXPIRES is beyond one year, using it: {}", mc_json.merge_fields.expires
-            );
-            utc_expires = existing_expire;
+                "Could not parse MailChimp existing EXPIRES: \"{}\"", mc_json.merge_fields.expires
+            )
         }
     };
 
