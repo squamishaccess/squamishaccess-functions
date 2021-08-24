@@ -1,4 +1,5 @@
-#![forbid(unsafe_code, future_incompatible)]
+#![forbid(unsafe_code)]
+#![deny(future_incompatible)]
 #![warn(
     missing_debug_implementations,
     rust_2018_idioms,
