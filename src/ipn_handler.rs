@@ -308,6 +308,15 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
                 mc_json.email_address
             );
             Ok(StatusCode::Ok.into())
+        } else if mc_json.status == status {
+            // If someone has unsubscribed, we don't subscribe them again but it's also not an error.
+            info!(
+                logger,
+                "Mailchimp: successfully renewed existing status \"{}\" for: {}",
+                mc_json.status,
+                mc_json.email_address
+            );
+            Ok(StatusCode::Ok.into())
         } else {
             Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
