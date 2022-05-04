@@ -73,8 +73,3 @@ struct MailchimpResponse {
     email_address: String,
     merge_fields: McMergeFields,
 }
-
-#[derive(Debug, Deserialize)]
-struct MailchimpErrorResponse {
-    title: String,
-}
