@@ -61,12 +61,11 @@ async fn main() -> Result<()> {
 
     // PayPal
     let paypal_sandbox = env::var("PAYPAL_SANDBOX").is_ok();
-    let paypal_base_url;
-    if paypal_sandbox {
+    let paypal_base_url = if paypal_sandbox {
         warn!("SANDBOX: Using PayPal sandbox environment");
-        paypal_base_url = Url::parse("https://ipnpb.sandbox.paypal.com/")?;
+        Url::parse("https://ipnpb.sandbox.paypal.com/")?
     } else {
-        paypal_base_url = Url::parse("https://ipnpb.paypal.com/")?;
+        Url::parse("https://ipnpb.paypal.com/")?
     };
 
     // Set up re-useable api clients for efficiency & ergonomics.

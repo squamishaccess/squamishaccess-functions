@@ -51,14 +51,14 @@ impl LogMiddleware {
                 logger.log(format!("Internal error. message: {:?}, error_type: {:?}, status: {}, duration: {:?}",
                     error,
                     error.type_name(),
-                    format!("{} - {}", status as u16, status.canonical_reason()),
+                    format_args!("{} - {}", status as u16, status.canonical_reason()),
                     start.elapsed(),
                 )).await;
             } else {
                 logger
                     .log(format!(
                         "Internal error. status: {}, duration: {:?}",
-                        format!("{} - {}", status as u16, status.canonical_reason()),
+                        format_args!("{} - {}", status as u16, status.canonical_reason()),
                         start.elapsed(),
                     ))
                     .await;
@@ -70,7 +70,7 @@ impl LogMiddleware {
                         "Client error. message: {:?}, error_type: {:?}, status: {}, duration: {:?}",
                         error,
                         error.type_name(),
-                        format!("{} - {}", status as u16, status.canonical_reason()),
+                        format_args!("{} - {}", status as u16, status.canonical_reason()),
                         start.elapsed(),
                     ))
                     .await;
@@ -78,7 +78,7 @@ impl LogMiddleware {
                 logger
                     .log(format!(
                         "Client error. status: {}, duration: {:?}",
-                        format!("{} - {}", status as u16, status.canonical_reason()),
+                        format_args!("{} - {}", status as u16, status.canonical_reason()),
                         start.elapsed(),
                     ))
                     .await;

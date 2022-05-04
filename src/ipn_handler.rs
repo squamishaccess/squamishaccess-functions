@@ -119,21 +119,19 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     }
 
     // Attempt to deserialize the IPN message.
-    let ipn_transaction_message: IPNTransationMessage;
-    match serde_qs::from_str(&ipn_transaction_message_raw) {
-        Ok(msg) => {
-            ipn_transaction_message = msg;
-        }
-        Err(error) => {
-            return Err(tide::Error::from_str(
-                StatusCode::InternalServerError,
-                format!(
-                    "(Full IPN Details) Invalid IPN: unparseable IPN: \"{}\" - error: {:?}",
-                    ipn_transaction_message_raw, error
-                ),
-            ));
-        }
-    }
+    let ipn_transaction_message: IPNTransationMessage =
+        match serde_qs::from_str(&ipn_transaction_message_raw) {
+            Ok(msg) => msg,
+            Err(error) => {
+                return Err(tide::Error::from_str(
+                    StatusCode::InternalServerError,
+                    format!(
+                        "(Full IPN Details) Invalid IPN: unparseable IPN: \"{}\" - error: {:?}",
+                        ipn_transaction_message_raw, error
+                    ),
+                ));
+            }
+        };
 
     if let Some(payment_date) = ipn_transaction_message.payment_date {
         info!(logger, "Payment Timestamp: {}", payment_date);
