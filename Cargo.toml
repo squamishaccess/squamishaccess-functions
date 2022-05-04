@@ -8,7 +8,7 @@ license = "BlueOak-1.0.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-eyre = "0.5.6"
+color-eyre = "0.6.0"
 dotenv = "0.15.0"
 femme = "2.1.1"
 http-types = "2.7.0"
