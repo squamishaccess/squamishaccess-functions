@@ -1616,7 +1616,7 @@ dependencies = [
 
 [[package]]
 name = "squamishaccess-functions"
-version = "3.2.2"
+version = "3.2.3"
 dependencies = [
  "async-std",
  "chrono",
