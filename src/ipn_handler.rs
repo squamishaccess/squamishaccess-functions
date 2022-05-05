@@ -23,6 +23,8 @@ struct IPNTransationMessage {
     mc_gross: String,
     exchange_rate: Option<String>,
     payment_date: Option<String>,
+    // for debug purposes
+    transaction_subject: Option<String>,
 }
 
 #[allow(clippy::upper_case_acronyms)]
@@ -132,6 +134,12 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
                 ));
             }
         };
+
+    if let Some(txn_subject) = ipn_transaction_message.transaction_subject {
+        info!(logger, "IPN `transaction_subject`: {}", txn_subject);
+    } else {
+        info!(logger, "No `transaction_subject` in IPN");
+    }
 
     if let Some(payment_date) = ipn_transaction_message.payment_date {
         info!(logger, "Payment Timestamp: {}", payment_date);
