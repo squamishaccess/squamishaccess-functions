@@ -90,7 +90,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
             return Err(tide::Error::from_str(
                 StatusCode::InternalServerError,
                 format!(
-                    "(Message Type Check) Invalid IPN: unparseable IPN: \"{}\" - error: {:?}",
+                    "(Message Type Check) Invalid IPN: unparseable IPN: \"{}\" - error: {}",
                     ipn_transaction_message_raw, error
                 ),
             ));
@@ -126,7 +126,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
                 return Err(tide::Error::from_str(
                     StatusCode::InternalServerError,
                     format!(
-                        "(Full IPN Details) Invalid IPN: unparseable IPN: \"{}\" - error: {:?}",
+                        "(Full IPN Details) Invalid IPN: unparseable IPN: \"{}\" - error: {}",
                         ipn_transaction_message_raw, error
                     ),
                 ));
