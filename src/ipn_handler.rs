@@ -85,8 +85,10 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         ));
     }
 
+    let serde_qs_loose = serde_qs::Config::new(5, false);
+
     // Check just the `txn_type` of the IPN message.
-    let txn_type = match serde_qs::from_str::<IPNMessageTypeOnly>(&ipn_transaction_message_raw) {
+    let txn_type = match serde_qs_loose.deserialize_str::<IPNMessageTypeOnly>(&ipn_transaction_message_raw) {
         Ok(msg) => msg.txn_type,
         Err(error) => {
             return Err(tide::Error::from_str(
@@ -122,7 +124,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
 
     // Attempt to deserialize the IPN message.
     let ipn_transaction_message: IPNTransationMessage =
-        match serde_qs::from_str(&ipn_transaction_message_raw) {
+        match serde_qs_loose.deserialize_str(&ipn_transaction_message_raw) {
             Ok(msg) => msg,
             Err(error) => {
                 return Err(tide::Error::from_str(
