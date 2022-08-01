@@ -88,18 +88,19 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     let serde_qs_loose = serde_qs::Config::new(5, false);
 
     // Check just the `txn_type` of the IPN message.
-    let txn_type = match serde_qs_loose.deserialize_str::<IPNMessageTypeOnly>(&ipn_transaction_message_raw) {
-        Ok(msg) => msg.txn_type,
-        Err(error) => {
-            return Err(tide::Error::from_str(
-                StatusCode::InternalServerError,
-                format!(
-                    "(Message Type Check) Invalid IPN: unparseable IPN: \"{}\" - error: {}",
-                    ipn_transaction_message_raw, error
-                ),
-            ));
-        }
-    };
+    let txn_type =
+        match serde_qs_loose.deserialize_str::<IPNMessageTypeOnly>(&ipn_transaction_message_raw) {
+            Ok(msg) => msg.txn_type,
+            Err(error) => {
+                return Err(tide::Error::from_str(
+                    StatusCode::InternalServerError,
+                    format!(
+                        "(Message Type Check) Invalid IPN: unparseable IPN: \"{}\" - error: {}",
+                        ipn_transaction_message_raw, error
+                    ),
+                ));
+            }
+        };
 
     // PayPal buttons - we accept yearly subscriptions ("subscr_payment") and one-off yearly payments ("web_accept").
     match txn_type.as_deref() {
