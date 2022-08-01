@@ -33,7 +33,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --workspace --benches --bins --examples --tests
+        args: --workspace --all-targets
 
     - name: tests
       uses: actions-rs/cargo@v1
@@ -48,7 +48,7 @@ jobs:
     - uses: actions/checkout@master
 
     - name: clippy
-      run: cargo clippy --workspace --benches --bins --examples --tests -- -D warnings
+      run: cargo clippy --all-targets -- -D warnings
 
     - name: fmt
       run: cargo fmt --all -- --check
