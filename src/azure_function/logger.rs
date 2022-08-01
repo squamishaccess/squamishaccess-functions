@@ -5,7 +5,7 @@ use super::{AzureFnLogger, AzureFnLoggerExt};
 #[macro_export]
 macro_rules! info {
     ($logger:expr, $($arg:tt)+) => ({
-        $logger.log(format!($($arg)*)).await;
+        $logger.log(format!($($arg)+)).await;
     })
 }
 
@@ -27,10 +27,10 @@ impl LogMiddleware {
     }
 
     /// Log a request and a response.
-    async fn log<'a, State: Clone + Send + Sync + 'static>(
-        &'a self,
+    async fn log<'mw, State: Clone + Send + Sync + 'static>(
+        &'mw self,
         mut req: Request<State>,
-        next: Next<'a, State>,
+        next: Next<'mw, State>,
     ) -> Result {
         if req.ext::<LogMiddlewareHasBeenRun>().is_some() {
             return Ok(next.run(req).await);

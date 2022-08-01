@@ -49,10 +49,10 @@ impl AzureFnMiddleware {
     }
 
     /// Log a request and a response.
-    async fn transform<'a, State: Clone + Send + Sync + 'static>(
-        &'a self,
+    async fn transform<'mw, State: Clone + Send + Sync + 'static>(
+        &'mw self,
         mut req: Request<State>,
-        next: Next<'a, State>,
+        next: Next<'mw, State>,
     ) -> Result {
         if req.ext::<AzureFnMiddlewareHasBeenRun>().is_some() {
             return Ok(next.run(req).await);
@@ -93,7 +93,8 @@ impl AzureFnMiddleware {
 
         let mut res = next.run(req).await; // Continue middleware stack.
 
-        let logger = Arc::try_unwrap(logger).unwrap();
+        let logger =
+            Arc::try_unwrap(logger).expect("Logger not being free here is a fundimental logic bug");
 
         // Transform our headers into an iterator of JSON key/value pairs, and then construct a JSON object from it.
         let headers_iter = res.iter().map(|(name, values)| {
