@@ -1,6 +1,6 @@
 [package]
 name = "squamishaccess-functions"
-version = "3.2.5"
+version = "3.2.6"
 authors = ["Jeremiah Senkpiel <fishrock123@rocketmail.com>"]
 edition = "2021"
 license = "BlueOak-1.0.0"
