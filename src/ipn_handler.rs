@@ -1,6 +1,4 @@
 use chrono::prelude::*;
-use chrono::Duration;
-use chrono::SecondsFormat::Secs;
 use serde::Deserialize;
 use serde_json::json;
 use tide::http::Method;
@@ -8,7 +6,10 @@ use tide::{Body, Response, StatusCode};
 
 // The info! logging macro comes from crate::azure_function::logger
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
-use crate::{AppRequest, MailchimpQuery, MailchimpResponse};
+use crate::{
+    parse_mailchimp_date, safe_add_year, today_ppt, AppRequest, MailchimpDateFormat,
+    MailchimpQuery, MailchimpResponse,
+};
 
 #[allow(
     clippy::upper_case_acronyms,
@@ -235,8 +236,8 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         ));
     }
 
-    let utc_now: DateTime<Utc> = Utc::now();
-    let mut utc_expires: DateTime<Utc> = Utc::now() + Duration::days(365);
+    let today: NaiveDate = today_ppt();
+    let mut expires: NaiveDate = safe_add_year(today, 1);
 
     let status;
     if mailchimp_res.status().is_client_error() {
@@ -257,20 +258,14 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         };
 
         // Pick up an existing date if one exists and if we can parse it.
-        if let Ok(existing_expire_day) =
-            NaiveDate::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")
-        {
-            let existing_expire = existing_expire_day
-                .and_hms_opt(12, 0, 0)
-                .expect("Failed to create a NaiveDateTime with the given date and time.");
-            let existing_expire = DateTime::from_naive_utc_and_offset(existing_expire, Utc);
-            if existing_expire > utc_expires {
+        if let Ok(existing_expire_day) = parse_mailchimp_date(&mc_json.merge_fields.expires) {
+            if existing_expire_day > expires {
                 info!(
                     logger,
                     "existing EXPIRES is beyond one year, using it: {}",
                     mc_json.merge_fields.expires
                 );
-                utc_expires = existing_expire;
+                expires = existing_expire_day;
             }
         } else {
             // Weird, we couldn't parse the date. Maybe it was blank in mailchimp? (Some old members had blank fields.)
@@ -287,8 +282,8 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         "merge_fields": {
             "FNAME": ipn_transaction_message.first_name,
             "LNAME": ipn_transaction_message.last_name,
-            "JOINED": utc_now.to_rfc3339_opts(Secs, true),
-            "EXPIRES": utc_expires.to_rfc3339_opts(Secs, true),
+            "JOINED": today.to_mailchimp_format(),
+            "EXPIRES": expires.to_mailchimp_format(),
         },
         "status": status,
     });

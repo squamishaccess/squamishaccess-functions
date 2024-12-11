@@ -5,7 +5,7 @@ use tide::{Response, StatusCode};
 
 // The info! logging macro comes from crate::azure_function::logger
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
-use crate::{AppRequest, MailchimpQuery, MailchimpResponse};
+use crate::{parse_mailchimp_date, today_ppt, AppRequest, MailchimpQuery, MailchimpResponse};
 
 /// Check if an email is in MailChimp & when it's expiry date is, if available.
 pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
@@ -49,10 +49,13 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
         StatusCode::Ok => {
             let mc_json: MailchimpResponse = mailchimp_res.body_json().await?;
 
-            let membership = if mc_json.status == "pending" || mc_json.status == "subscribed" {
-                "active"
-            } else {
-                "expired"
+            // Parse the expiration date from the MailChimp response
+            let expires_date = parse_mailchimp_date(&mc_json.merge_fields.expires);
+            let today = today_ppt();
+
+            let membership = match expires_date {
+                Ok(expiry) if expiry >= today => "active",
+                _ => "expired",
             };
 
             let body = json!({
