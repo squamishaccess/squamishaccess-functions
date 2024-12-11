@@ -10,7 +10,10 @@ use tide::{Body, Response, StatusCode};
 use crate::azure_function::{AzureFnLogger, AzureFnLoggerExt};
 use crate::{AppRequest, MailchimpQuery, MailchimpResponse};
 
-#[allow(clippy::upper_case_acronyms, reason = "The struct name uses a naming convention aligned with external API standards")]
+#[allow(
+    clippy::upper_case_acronyms,
+    reason = "The struct name uses a naming convention aligned with external API standards"
+)]
 #[derive(Debug, Deserialize)]
 struct IPNTransationMessage {
     txn_id: String,
@@ -27,7 +30,10 @@ struct IPNTransationMessage {
     transaction_subject: Option<String>,
 }
 
-#[allow(clippy::upper_case_acronyms, reason = "The struct name uses a naming convention aligned with external API standards")]
+#[allow(
+    clippy::upper_case_acronyms,
+    reason = "The struct name uses a naming convention aligned with external API standards"
+)]
 #[derive(Debug, Deserialize)]
 struct IPNMessageTypeOnly {
     txn_type: Option<String>,
@@ -254,7 +260,9 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
         if let Ok(existing_expire_day) =
             NaiveDate::parse_from_str(&mc_json.merge_fields.expires, "%Y-%m-%d")
         {
-            let existing_expire = existing_expire_day.and_hms_opt(12, 0, 0).expect("Failed to create a NaiveDateTime with the given date and time.");
+            let existing_expire = existing_expire_day
+                .and_hms_opt(12, 0, 0)
+                .expect("Failed to create a NaiveDateTime with the given date and time.");
             let existing_expire = DateTime::from_naive_utc_and_offset(existing_expire, Utc);
             if existing_expire > utc_expires {
                 info!(
