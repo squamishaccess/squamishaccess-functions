@@ -33,7 +33,6 @@
     clippy::inefficient_to_string,
     clippy::macro_use_imports,
     clippy::match_same_arms,
-    clippy::multiple_crate_versions,
     clippy::no_effect_underscore_binding,
     clippy::panic,
     clippy::print_stderr,

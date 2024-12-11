@@ -35,7 +35,7 @@ pub async fn membership_check(mut req: AppRequest) -> tide::Result<Response> {
     let state = req.state();
 
     // The MailChimp api is a bit strange.
-    let hash = md5::compute(&email.to_lowercase());
+    let hash = md5::compute(email.to_lowercase());
 
     let mc_query = MailchimpQuery {
         fields: &["FNAME", "EXPIRES"],

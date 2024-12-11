@@ -210,7 +210,7 @@ pub async fn ipn_handler(mut req: AppRequest) -> tide::Result<Response> {
     info!(logger, "Email: {}", ipn_transaction_message.payer_email);
 
     // The MailChimp api is a bit strange.
-    let hash = md5::compute(&ipn_transaction_message.payer_email.to_lowercase());
+    let hash = md5::compute(ipn_transaction_message.payer_email.to_lowercase());
 
     let mc_query = MailchimpQuery {
         fields: &["EXPIRES"],
