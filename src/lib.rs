@@ -48,10 +48,11 @@
     clippy::used_underscore_binding
 )]
 
-use std::sync::Arc;
-
+use chrono::{Datelike, Local, NaiveDate, ParseError};
+use chrono_tz::America::Vancouver;
 use log::warn;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use surf::Client;
 use tide::{Request, Response, Server, StatusCode};
 
@@ -77,6 +78,31 @@ pub struct AppState {
 }
 
 pub type AppRequest = Request<Arc<AppState>>;
+
+trait MailchimpDateFormat {
+    fn to_mailchimp_format(&self) -> String;
+}
+
+impl MailchimpDateFormat for NaiveDate {
+    fn to_mailchimp_format(&self) -> String {
+        self.format("%Y-%m-%d").to_string()
+    }
+}
+
+pub fn parse_mailchimp_date(iso_date: &str) -> Result<NaiveDate, ParseError> {
+    NaiveDate::parse_from_str(iso_date, "%Y-%m-%d")
+}
+
+pub fn today_ppt() -> NaiveDate {
+    Local::now().with_timezone(&Vancouver).date_naive()
+}
+
+pub fn safe_add_year(date: NaiveDate, years: i32) -> NaiveDate {
+    let target_year = date.year() + years;
+    date.with_year(target_year)
+        .or_else(|| NaiveDate::from_ymd_opt(target_year, 2, 28)) // Handle feb 29th edge case
+        .expect("Failed to calculate a valid date")
+}
 
 async fn get_ping(_req: AppRequest) -> tide::Result<Response> {
     Ok(StatusCode::Ok.into())
